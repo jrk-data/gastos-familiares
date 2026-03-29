@@ -19,11 +19,11 @@ function doPost(e) {
     const parteAgus  = parseFloat((montoTotal * CONFIG.PORCENTAJE_AGUS).toFixed(2));
 
     const ss   = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-    let   hoja = ss.getSheetByName('Gastos');
+    let   hoja = ss.getSheetByName('Historial');
 
     if (!hoja) {
-      hoja = ss.insertSheet('Gastos');
-      const headers = ['Fecha', 'Descripción', 'Categoría', 'Monto Total', 'Quién pagó', 'Joaco (70%)', 'Agus (30%)', 'Registrado'];
+      hoja = ss.insertSheet('Historial');
+      const headers = ['Fecha', 'Descripción', 'Categoría', 'Monto Total', 'Moneda', 'Pagado por', 'Mi parte', 'Parte otra persona'];
       hoja.getRange(1, 1, 1, headers.length)
           .setValues([headers])
           .setFontWeight('bold');
@@ -35,10 +35,10 @@ function doPost(e) {
       data.descripcion,
       data.categoria,
       montoTotal,
+      'ARS',
       data.quien,
       parteJoaco,
       parteAgus,
-      new Date().toLocaleString('es-AR'),
     ]);
 
     return ContentService
