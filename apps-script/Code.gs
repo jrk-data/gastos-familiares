@@ -53,6 +53,32 @@ function doPost(e) {
 }
 
 // ============================================================
+//  DEVOLVER GASTOS AL FORMULARIO WEB
+// ============================================================
+function doGet() {
+  const ss   = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  const hoja = ss.getSheetByName('Historial');
+
+  if (!hoja || hoja.getLastRow() < 2) {
+    return ContentService
+      .createTextOutput(JSON.stringify([]))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  const valores = hoja.getDataRange().getValues();
+  const headers = valores[0];
+  const filas   = valores.slice(1).reverse().map(row => {
+    const obj = {};
+    headers.forEach((h, i) => { obj[h] = row[i]; });
+    return obj;
+  });
+
+  return ContentService
+    .createTextOutput(JSON.stringify(filas))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+// ============================================================
 //  PRUEBA MANUAL DESDE EL EDITOR
 // ============================================================
 function testPost() {
