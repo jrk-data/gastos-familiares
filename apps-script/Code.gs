@@ -56,26 +56,39 @@ function doPost(e) {
 //  DEVOLVER GASTOS AL FORMULARIO WEB
 // ============================================================
 function doGet() {
-  const ss   = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-  const hoja = ss.getSheetByName('Historial');
+  try {
+    const ss   = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    const hoja = ss.getSheetByName('Historial');
 
-  if (!hoja || hoja.getLastRow() < 2) {
+    if (!hoja || hoja.getLastRow() < 2) {
+      return ContentService
+        .createTextOutput(JSON.stringify([]))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    const valores = hoja.getDataRange().getValues();
+    const headers = valores[0];
+    const filas   = valores.slice(1).reverse().map(row =>
+      headers.reduce((obj, h, i) => {
+        const v = row[i];
+        // Convertir Date a string yyyy-mm-dd para evitar errores de serialización
+        obj[h] = v instanceof Date
+          ? Utilities.formatDate(v, Session.getScriptTimeZone(), 'yyyy-MM-dd')
+          : v;
+        return obj;
+      }, {})
+    );
+
     return ContentService
-      .createTextOutput(JSON.stringify([]))
+      .createTextOutput(JSON.stringify(filas))
+      .setMimeType(ContentService.MimeType.JSON);
+
+  } catch (err) {
+    Logger.log('Error en doGet: ' + err.message);
+    return ContentService
+      .createTextOutput(JSON.stringify({ error: err.message }))
       .setMimeType(ContentService.MimeType.JSON);
   }
-
-  const valores = hoja.getDataRange().getValues();
-  const headers = valores[0];
-  const filas   = valores.slice(1).reverse().map(row => {
-    const obj = {};
-    headers.forEach((h, i) => { obj[h] = row[i]; });
-    return obj;
-  });
-
-  return ContentService
-    .createTextOutput(JSON.stringify(filas))
-    .setMimeType(ContentService.MimeType.JSON);
 }
 
 // ============================================================
