@@ -75,10 +75,7 @@
       gap: 1.5rem;
     }
 
-    /* El slide del gráfico no scrollea: el canvas ocupa todo */
-    .slide-chart {
-      overflow: hidden;
-    }
+    .slide-chart { overflow: hidden; }
 
     /* ── Formulario ── */
     .card {
@@ -266,10 +263,12 @@
     .btn-reload:hover { background: #f7fafc; }
 
     .tabla-wrap {
+      overflow-x: auto;
       overflow-y: auto;
       max-height: 420px;
       border: 1.5px solid #e2e8f0;
       border-radius: 8px;
+      -webkit-overflow-scrolling: touch;
     }
 
     table {
@@ -293,9 +292,15 @@
       white-space: nowrap;
     }
 
-    tbody tr { border-bottom: 1px solid #edf2f7; }
+    tbody tr {
+      border-bottom: 1px solid #edf2f7;
+      cursor: pointer;
+      transition: background 0.1s;
+    }
     tbody tr:last-child { border-bottom: none; }
-    tbody tr:hover { background: #f7fafc; }
+    tbody tr:hover  { background: #ebf4ff; }
+    tbody tr:active { background: #dbeafe; }
+    tbody tr.selected { background: #ebf4ff; outline: 2px solid #4c6ef5; outline-offset: -2px; }
 
     tbody td {
       padding: 0.6rem 0.875rem;
@@ -312,6 +317,113 @@
       font-size: 0.875rem;
     }
     .estado-error { color: #9b2c2c; }
+
+    /* ── Modal de edición ── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0);
+      z-index: 200;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      pointer-events: none;
+      transition: background 0.22s;
+    }
+
+    .modal-overlay.open {
+      background: rgba(0,0,0,0.45);
+      pointer-events: auto;
+    }
+
+    .modal {
+      background: #fff;
+      border-radius: 18px 18px 0 0;
+      padding: 1.5rem;
+      width: 100%;
+      max-width: 500px;
+      max-height: 92vh;
+      overflow-y: auto;
+      transform: translateY(100%);
+      transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .modal-overlay.open .modal {
+      transform: translateY(0);
+    }
+
+    @media (min-width: 600px) {
+      .modal-overlay { align-items: center; }
+      .modal {
+        border-radius: 16px;
+        transform: translateY(16px);
+        max-height: 85vh;
+      }
+      .modal-overlay.open .modal { transform: translateY(0); }
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.25rem;
+    }
+
+    .modal-header h3 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #1a202c;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.2rem;
+      color: #718096;
+      cursor: pointer;
+      padding: 0.25rem;
+      line-height: 1;
+    }
+    .modal-close:hover { color: #2d3748; }
+
+    .modal-actions {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1.25rem;
+    }
+
+    .btn-danger {
+      flex: 1;
+      padding: 0.75rem;
+      background: #fff;
+      color: #e53e3e;
+      border: 1.5px solid #e53e3e;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .btn-danger:hover { background: #fff5f5; }
+    .btn-danger.confirming {
+      background: #e53e3e;
+      color: #fff;
+    }
+
+    .btn-save {
+      flex: 1;
+      padding: 0.75rem;
+      background: #4c6ef5;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-save:hover { background: #3b5bdb; }
+    .btn-save:disabled { background: #a0aec0; cursor: not-allowed; }
   </style>
 </head>
 <body>
@@ -412,6 +524,58 @@
     </div>
   </div>
 
+  <!-- Modal edición -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal" id="modal">
+      <div class="modal-header">
+        <h3>Editar gasto</h3>
+        <button class="modal-close" id="modalClose">✕</button>
+      </div>
+      <form id="editForm" novalidate>
+        <div class="field">
+          <label for="editFecha">Fecha</label>
+          <input type="date" id="editFecha" required />
+        </div>
+        <div class="field">
+          <label for="editDescripcion">Descripción</label>
+          <input type="text" id="editDescripcion" maxlength="200" required />
+        </div>
+        <div class="field">
+          <label for="editCategoria">Categoría</label>
+          <select id="editCategoria" required>
+            <option value="Alimentación">Alimentación</option>
+            <option value="Transporte">Transporte</option>
+            <option value="Salud">Salud</option>
+            <option value="Educación">Educación</option>
+            <option value="Servicios">Servicios</option>
+            <option value="Ropa">Ropa</option>
+            <option value="Entretenimiento">Entretenimiento</option>
+            <option value="Hogar">Hogar</option>
+            <option value="Otro">Otro</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="editMonto">Monto</label>
+          <div class="monto-wrap">
+            <span>$</span>
+            <input type="number" id="editMonto" min="0" step="0.01" required />
+          </div>
+        </div>
+        <div class="field">
+          <label for="editQuien">¿Quién pagó?</label>
+          <select id="editQuien" required>
+            <option value="Joaco">Joaco</option>
+            <option value="Agus">Agus</option>
+          </select>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-danger" id="btnDelete">Eliminar</button>
+          <button type="submit" class="btn-save" id="btnSave">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
 </div>
 <script>
   const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwgH0t0cbO4juI-YBh1v8FvX24pM9X4KY_v2SOUvTRC0hVHoh4rG433wiTRNMysP4hQGw/exec";
@@ -434,17 +598,19 @@
 
   tabs.forEach(tab => tab.addEventListener("click", () => goTo(+tab.dataset.idx)));
 
-  // Swipe táctil
   const vp = document.getElementById("slidesViewport");
-  let touchX = 0, touchY = 0, swiping = false;
+  let touchX = 0, touchY = 0, swiping = false, blockSlideSwipe = false;
 
   vp.addEventListener("touchstart", e => {
-    touchX   = e.touches[0].clientX;
-    touchY   = e.touches[0].clientY;
-    swiping  = false;
+    touchX = e.touches[0].clientX;
+    touchY = e.touches[0].clientY;
+    swiping = false;
+    // Si el toque empieza dentro de la tabla, no navegar slides
+    blockSlideSwipe = !!e.target.closest(".tabla-wrap");
   }, { passive: true });
 
   vp.addEventListener("touchmove", e => {
+    if (blockSlideSwipe) return;
     if (!swiping) {
       const dx = Math.abs(e.touches[0].clientX - touchX);
       const dy = Math.abs(e.touches[0].clientY - touchY);
@@ -454,7 +620,7 @@
   }, { passive: false });
 
   vp.addEventListener("touchend", e => {
-    if (!swiping) return;
+    if (!swiping || blockSlideSwipe) return;
     const dx = e.changedTouches[0].clientX - touchX;
     if (Math.abs(dx) > 48) goTo(currentIdx + (dx < 0 ? 1 : -1));
     swiping = false;
@@ -487,8 +653,7 @@
   function renderChart(rows, periodo) {
     const canvas = document.getElementById("gastosChart");
     const wrap   = document.getElementById("chartWrap");
-
-    const old = wrap.querySelector(".chart-empty");
+    const old    = wrap.querySelector(".chart-empty");
     if (old) old.remove();
 
     const agrupado = {};
@@ -506,7 +671,6 @@
     });
 
     const keys = Object.keys(agrupado).sort();
-
     if (!keys.length) {
       canvas.style.display = "none";
       const el = document.createElement("p");
@@ -517,7 +681,6 @@
     }
 
     canvas.style.display = "";
-
     const dpr = window.devicePixelRatio || 1;
     const W   = wrap.clientWidth  || 600;
     const H   = wrap.clientHeight || 320;
@@ -530,18 +693,17 @@
     ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, W, H);
 
-    const PAD_L  = 72, PAD_R = 16, PAD_T = 16;
-    const LEG_H  = Math.ceil(CATEGORIAS.length / 3) * 22 + 8;
-    const PAD_B  = 32 + LEG_H;
-    const cW = W - PAD_L - PAD_R;
-    const cH = H - PAD_T - PAD_B;
+    const PAD_L = 72, PAD_R = 16, PAD_T = 16;
+    const LEG_H = Math.ceil(CATEGORIAS.length / 3) * 22 + 8;
+    const PAD_B = 32 + LEG_H;
+    const cW    = W - PAD_L - PAD_R;
+    const cH    = H - PAD_T - PAD_B;
 
-    const totals = keys.map(k => CATEGORIAS.reduce((s, c) => s + (agrupado[k].cats[c] || 0), 0));
-    const maxVal = niceMax(Math.max(...totals));
+    const totals  = keys.map(k => CATEGORIAS.reduce((s, c) => s + (agrupado[k].cats[c] || 0), 0));
+    const maxVal  = niceMax(Math.max(...totals));
     const N_TICKS = 5;
-    const font = "11px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif";
+    const font    = "11px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif";
 
-    // Gridlines + Y labels
     for (let i = 0; i <= N_TICKS; i++) {
       const val = (maxVal / N_TICKS) * i;
       const y   = PAD_T + cH - (val / maxVal) * cH;
@@ -554,14 +716,10 @@
       const lbl = val >= 1e6 ? `$${(val/1e6).toFixed(1)}M`
                 : val >= 1e3 ? `$${(val/1e3).toFixed(0)}k`
                 : `$${val.toFixed(0)}`;
-      ctx.fillStyle    = "#718096";
-      ctx.textAlign    = "right";
-      ctx.textBaseline = "middle";
-      ctx.font = font;
+      ctx.fillStyle = "#718096"; ctx.textAlign = "right"; ctx.textBaseline = "middle"; ctx.font = font;
       ctx.fillText(lbl, PAD_L - 6, y);
     }
 
-    // Barras apiladas
     const slotW  = cW / keys.length;
     const barPad = Math.max(4, slotW * 0.2);
     const barW   = slotW - barPad;
@@ -576,31 +734,21 @@
         yBase -= bH;
         ctx.fillStyle = COLORES_CAT[cat];
         ctx.beginPath();
-        ctx.roundRect ? ctx.roundRect(x, yBase, barW, bH, [2, 2, 0, 0])
-                      : ctx.rect(x, yBase, barW, bH);
+        ctx.roundRect ? ctx.roundRect(x, yBase, barW, bH, [2, 2, 0, 0]) : ctx.rect(x, yBase, barW, bH);
         ctx.fill();
       });
-      ctx.fillStyle    = "#718096";
-      ctx.textAlign    = "center";
-      ctx.textBaseline = "top";
-      ctx.font = font;
+      ctx.fillStyle = "#718096"; ctx.textAlign = "center"; ctx.textBaseline = "top"; ctx.font = font;
       ctx.fillText(agrupado[k].displayLabel, x + barW / 2, PAD_T + cH + 8);
     });
 
-    // Leyenda
     const LEG_Y  = H - LEG_H + 4;
     const ITEM_W = Math.floor(W / 3);
     CATEGORIAS.forEach((cat, i) => {
-      const col = i % 3;
-      const row = Math.floor(i / 3);
-      const lx  = col * ITEM_W + 4;
-      const ly  = LEG_Y + row * 22;
+      const col = i % 3, row = Math.floor(i / 3);
+      const lx = col * ITEM_W + 4, ly = LEG_Y + row * 22;
       ctx.fillStyle = COLORES_CAT[cat];
       ctx.fillRect(lx, ly + 2, 12, 12);
-      ctx.fillStyle    = "#4a5568";
-      ctx.textAlign    = "left";
-      ctx.textBaseline = "middle";
-      ctx.font = font;
+      ctx.fillStyle = "#4a5568"; ctx.textAlign = "left"; ctx.textBaseline = "middle"; ctx.font = font;
       ctx.fillText(cat, lx + 16, ly + 8);
     });
   }
@@ -610,9 +758,8 @@
   });
 
   window.addEventListener("resize", () => {
-    if (currentIdx === 1 && rowsGlobal.length) {
+    if (currentIdx === 1 && rowsGlobal.length)
       renderChart(rowsGlobal, document.getElementById("periodoSelect").value);
-    }
   });
 
   // ── Formateo ─────────────────────────────────────────────
@@ -629,54 +776,154 @@
     return `${d}/${m}/${y}`;
   }
 
-  // ── Cargar historial ──────────────────────────────────────
+  // ── Historial ─────────────────────────────────────────────
   async function cargarHistorial() {
     const wrap = document.getElementById("tablaWrap");
     wrap.innerHTML = '<p class="estado-cargando">Cargando…</p>';
     try {
       const res  = await fetch(APPS_SCRIPT_URL);
       const rows = await res.json();
-
       rowsGlobal = rows;
-      if (currentIdx === 1) {
-        renderChart(rows, document.getElementById("periodoSelect").value);
-      }
-
-      if (!rows.length) {
-        wrap.innerHTML = '<p class="estado-vacio">Sin registros aún.</p>';
-        return;
-      }
-
-      const cols = [
-        { key: "Fecha",              fmt: fmtFecha, num: false },
-        { key: "Descripción",        fmt: v => v,   num: false },
-        { key: "Categoría",          fmt: v => v,   num: false },
-        { key: "Monto Total",        fmt: fmtMonto, num: true  },
-        { key: "Moneda",             fmt: v => v,   num: false },
-        { key: "Pagado por",         fmt: v => v,   num: false },
-        { key: "Mi parte",           fmt: fmtMonto, num: true  },
-        { key: "Parte otra persona", fmt: fmtMonto, num: true  },
-      ];
-
-      let html = "<table><thead><tr>";
-      cols.forEach(c => { html += `<th>${c.key}</th>`; });
-      html += "</tr></thead><tbody>";
-      rows.forEach(row => {
-        html += "<tr>";
-        cols.forEach(c => {
-          const cls = c.num ? ' class="monto-num"' : "";
-          html += `<td${cls}>${c.fmt(row[c.key] ?? "")}</td>`;
-        });
-        html += "</tr>";
-      });
-      html += "</tbody></table>";
-      wrap.innerHTML = html;
+      if (currentIdx === 1) renderChart(rows, document.getElementById("periodoSelect").value);
+      renderTabla(rows);
     } catch (err) {
       wrap.innerHTML = '<p class="estado-error">No se pudo cargar el historial.</p>';
     }
   }
 
-  // ── Envío del formulario ──────────────────────────────────
+  function renderTabla(rows) {
+    const wrap = document.getElementById("tablaWrap");
+    if (!rows.length) {
+      wrap.innerHTML = '<p class="estado-vacio">Sin registros aún.</p>';
+      return;
+    }
+
+    const cols = [
+      { key: "Fecha",              fmt: fmtFecha, num: false },
+      { key: "Descripción",        fmt: v => v,   num: false },
+      { key: "Categoría",          fmt: v => v,   num: false },
+      { key: "Monto Total",        fmt: fmtMonto, num: true  },
+      { key: "Moneda",             fmt: v => v,   num: false },
+      { key: "Pagado por",         fmt: v => v,   num: false },
+      { key: "Mi parte",           fmt: fmtMonto, num: true  },
+      { key: "Parte otra persona", fmt: fmtMonto, num: true  },
+    ];
+
+    let html = "<table><thead><tr>";
+    cols.forEach(c => { html += `<th>${c.key}</th>`; });
+    html += "</tr></thead><tbody>";
+    rows.forEach((row, i) => {
+      html += `<tr data-idx="${i}">`;
+      cols.forEach(c => {
+        const cls = c.num ? ' class="monto-num"' : "";
+        html += `<td${cls}>${c.fmt(row[c.key] ?? "")}</td>`;
+      });
+      html += "</tr>";
+    });
+    html += "</tbody></table>";
+    wrap.innerHTML = html;
+
+    wrap.querySelectorAll("tbody tr").forEach(tr => {
+      tr.addEventListener("click", () => openModal(rowsGlobal[+tr.dataset.idx]));
+    });
+  }
+
+  // ── Modal edición / eliminación ───────────────────────────
+  const overlay   = document.getElementById("modalOverlay");
+  const btnDelete = document.getElementById("btnDelete");
+  const btnSave   = document.getElementById("btnSave");
+  let   editingRow = null;
+  let   deleteConfirmTimer = null;
+
+  function openModal(row) {
+    editingRow = row;
+    document.getElementById("editFecha").value       = String(row["Fecha"] ?? "").substring(0, 10);
+    document.getElementById("editDescripcion").value = row["Descripción"] ?? "";
+    document.getElementById("editCategoria").value   = row["Categoría"]   ?? "";
+    document.getElementById("editMonto").value       = row["Monto Total"] ?? "";
+    document.getElementById("editQuien").value       = row["Pagado por"]  ?? "";
+
+    resetDeleteBtn();
+    overlay.classList.add("open");
+  }
+
+  function closeModal() {
+    overlay.classList.remove("open");
+    editingRow = null;
+    resetDeleteBtn();
+  }
+
+  function resetDeleteBtn() {
+    clearTimeout(deleteConfirmTimer);
+    btnDelete.textContent = "Eliminar";
+    btnDelete.classList.remove("confirming");
+  }
+
+  document.getElementById("modalClose").addEventListener("click", closeModal);
+  overlay.addEventListener("click", e => { if (e.target === overlay) closeModal(); });
+
+  // Eliminar (requiere doble toque para confirmar)
+  btnDelete.addEventListener("click", async () => {
+    if (!btnDelete.classList.contains("confirming")) {
+      btnDelete.textContent = "¿Confirmar?";
+      btnDelete.classList.add("confirming");
+      deleteConfirmTimer = setTimeout(resetDeleteBtn, 3000);
+      return;
+    }
+    resetDeleteBtn();
+    btnDelete.disabled = true;
+    btnSave.disabled   = true;
+    try {
+      await fetch(APPS_SCRIPT_URL, {
+        method:  "POST",
+        mode:    "no-cors",
+        headers: { "Content-Type": "text/plain" },
+        body:    JSON.stringify({ action: "delete", _row: editingRow._row }),
+      });
+      closeModal();
+      setTimeout(cargarHistorial, 800);
+    } catch {
+      btnDelete.disabled = false;
+      btnSave.disabled   = false;
+    }
+  });
+
+  // Guardar cambios
+  document.getElementById("editForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    if (!document.getElementById("editForm").checkValidity()) {
+      document.getElementById("editForm").reportValidity();
+      return;
+    }
+    btnSave.disabled   = true;
+    btnDelete.disabled = true;
+    btnSave.textContent = "Guardando…";
+    try {
+      await fetch(APPS_SCRIPT_URL, {
+        method:  "POST",
+        mode:    "no-cors",
+        headers: { "Content-Type": "text/plain" },
+        body:    JSON.stringify({
+          action:      "update",
+          _row:        editingRow._row,
+          fecha:       document.getElementById("editFecha").value,
+          descripcion: document.getElementById("editDescripcion").value.trim(),
+          categoria:   document.getElementById("editCategoria").value,
+          monto:       parseFloat(document.getElementById("editMonto").value),
+          quien:       document.getElementById("editQuien").value,
+        }),
+      });
+      closeModal();
+      setTimeout(cargarHistorial, 800);
+    } catch {
+      btnSave.disabled   = false;
+      btnDelete.disabled = false;
+    } finally {
+      btnSave.textContent = "Guardar";
+    }
+  });
+
+  // ── Formulario nuevo gasto ────────────────────────────────
   document.getElementById("gastoForm").addEventListener("submit", async function (e) {
     e.preventDefault();
     const form = e.target;
@@ -690,10 +937,8 @@
       monto:       parseFloat(document.getElementById("monto").value),
       quien:       document.getElementById("quien").value,
     };
-    btn.disabled    = true;
-    btn.textContent = "Enviando…";
-    msg.className   = "";
-    msg.style.display = "none";
+    btn.disabled = true; btn.textContent = "Enviando…";
+    msg.className = ""; msg.style.display = "none";
     try {
       await fetch(APPS_SCRIPT_URL, {
         method:  "POST",
@@ -706,12 +951,11 @@
       form.reset();
       document.getElementById("fecha").valueAsDate = new Date();
       setTimeout(cargarHistorial, 1500);
-    } catch (err) {
+    } catch {
       msg.textContent = "Error al enviar. Revisá tu conexión e intentá de nuevo.";
       msg.className   = "error";
     } finally {
-      btn.disabled    = false;
-      btn.textContent = "Registrar gasto";
+      btn.disabled = false; btn.textContent = "Registrar gasto";
     }
   });
 

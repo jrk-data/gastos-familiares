@@ -8,29 +8,52 @@ const CONFIG = {
 };
 
 // ============================================================
-//  RECIBIR GASTO DESDE EL FORMULARIO WEB
+//  RECIBIR ACCIÓN DESDE EL FORMULARIO WEB
 // ============================================================
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
+    const ss   = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    const hoja = ss.getSheetByName('Historial');
 
+    // ── Eliminar fila ──────────────────────────────────────
+    if (data.action === 'delete') {
+      hoja.deleteRow(data._row);
+      return ok();
+    }
+
+    // ── Editar fila ────────────────────────────────────────
+    if (data.action === 'update') {
+      const montoTotal = parseFloat(data.monto) || 0;
+      const parteJoaco = parseFloat((montoTotal * CONFIG.PORCENTAJE_JOACO).toFixed(2));
+      const parteAgus  = parseFloat((montoTotal * CONFIG.PORCENTAJE_AGUS).toFixed(2));
+      hoja.getRange(data._row, 1, 1, 8).setValues([[
+        data.fecha,
+        data.descripcion,
+        data.categoria,
+        montoTotal,
+        'ARS',
+        data.quien,
+        parteJoaco,
+        parteAgus,
+      ]]);
+      return ok();
+    }
+
+    // ── Crear fila (comportamiento original) ───────────────
     const montoTotal = parseFloat(data.monto) || 0;
     const parteJoaco = parseFloat((montoTotal * CONFIG.PORCENTAJE_JOACO).toFixed(2));
     const parteAgus  = parseFloat((montoTotal * CONFIG.PORCENTAJE_AGUS).toFixed(2));
 
-    const ss   = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-    let   hoja = ss.getSheetByName('Historial');
-
-    if (!hoja) {
-      hoja = ss.insertSheet('Historial');
+    let hojaDest = hoja;
+    if (!hojaDest) {
+      hojaDest = ss.insertSheet('Historial');
       const headers = ['Fecha', 'Descripción', 'Categoría', 'Monto Total', 'Moneda', 'Pagado por', 'Mi parte', 'Parte otra persona'];
-      hoja.getRange(1, 1, 1, headers.length)
-          .setValues([headers])
-          .setFontWeight('bold');
-      hoja.setFrozenRows(1);
+      hojaDest.getRange(1, 1, 1, headers.length).setValues([headers]).setFontWeight('bold');
+      hojaDest.setFrozenRows(1);
     }
 
-    hoja.appendRow([
+    hojaDest.appendRow([
       data.fecha,
       data.descripcion,
       data.categoria,
@@ -41,15 +64,19 @@ function doPost(e) {
       parteAgus,
     ]);
 
-    return ContentService
-      .createTextOutput(JSON.stringify({ ok: true }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return ok();
 
   } catch (err) {
     return ContentService
       .createTextOutput(JSON.stringify({ ok: false, error: err.message }))
       .setMimeType(ContentService.MimeType.JSON);
   }
+}
+
+function ok() {
+  return ContentService
+    .createTextOutput(JSON.stringify({ ok: true }))
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
 // ============================================================
@@ -68,16 +95,17 @@ function doGet() {
 
     const valores = hoja.getDataRange().getValues();
     const headers = valores[0];
-    const filas   = valores.slice(1).reverse().map(row =>
-      headers.reduce((obj, h, i) => {
+    const filas   = valores.slice(1).map((row, idx) => {
+      const obj = headers.reduce((o, h, i) => {
         const v = row[i];
-        // Convertir Date a string yyyy-mm-dd para evitar errores de serialización
-        obj[h] = v instanceof Date
+        o[h] = v instanceof Date
           ? Utilities.formatDate(v, Session.getScriptTimeZone(), 'yyyy-MM-dd')
           : v;
-        return obj;
-      }, {})
-    );
+        return o;
+      }, {});
+      obj._row = idx + 2; // número de fila en el sheet (1 = header, 2 = primera fila de datos)
+      return obj;
+    }).reverse();
 
     return ContentService
       .createTextOutput(JSON.stringify(filas))
@@ -98,7 +126,7 @@ function testPost() {
   doPost({
     postData: {
       contents: JSON.stringify({
-        fecha:       '2026-03-29',
+        fecha:       '2026-03-31',
         descripcion: 'Supermercado Día',
         categoria:   'Alimentación',
         monto:       10000,
