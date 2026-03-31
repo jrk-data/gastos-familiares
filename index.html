@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gastos Familiares</title>
-  <style>
+<style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
@@ -193,6 +193,56 @@
       font-size: 0.875rem;
     }
     .estado-error { color: #9b2c2c; }
+
+    /* ── Gráfico ── */
+    .chart-card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      padding: 1.5rem;
+      width: 100%;
+      max-width: 900px;
+    }
+
+    .chart-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.25rem;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .chart-header h2 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #1a202c;
+    }
+
+    .periodo-select {
+      width: auto;
+      padding: 0.3rem 0.7rem;
+      font-size: 0.8rem;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 6px;
+      color: #4a5568;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    .chart-wrap {
+      position: relative;
+      height: 320px;
+    }
+
+    .chart-empty {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: #718096;
+      font-size: 0.875rem;
+    }
   </style>
 </head>
 <body>
@@ -254,6 +304,20 @@
     </form>
   </div>
 
+  <!-- Gráfico -->
+  <div class="chart-card">
+    <div class="chart-header">
+      <h2>Gastos por categoría</h2>
+      <select id="periodoSelect" class="periodo-select">
+        <option value="dia">Por día</option>
+        <option value="mes">Por mes</option>
+      </select>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="gastosChart"></canvas>
+    </div>
+  </div>
+
   <!-- Historial -->
   <div class="historial-card">
     <div class="historial-header">
@@ -269,6 +333,172 @@
     const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwgH0t0cbO4juI-YBh1v8FvX24pM9X4KY_v2SOUvTRC0hVHoh4rG433wiTRNMysP4hQGw/exec";
 
     document.getElementById("fecha").valueAsDate = new Date();
+
+    // ── Gráfico (canvas puro, sin dependencias) ───────────────
+    const CATEGORIAS = ["Alimentación","Transporte","Salud","Educación","Servicios","Ropa","Entretenimiento","Hogar","Otro"];
+    const COLORES_CAT = {
+      "Alimentación":    "#4c6ef5",
+      "Transporte":      "#f59f00",
+      "Salud":           "#40c057",
+      "Educación":       "#fa5252",
+      "Servicios":       "#7950f2",
+      "Ropa":            "#fd7e14",
+      "Entretenimiento": "#15aabf",
+      "Hogar":           "#e64980",
+      "Otro":            "#868e96",
+    };
+
+    let rowsGlobal = [];
+
+    function niceMax(val) {
+      if (val <= 0) return 1000;
+      const exp  = Math.pow(10, Math.floor(Math.log10(val)));
+      const f    = val / exp;
+      const nice = f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10;
+      return nice * exp;
+    }
+
+    function renderChart(rows, periodo) {
+      const canvas = document.getElementById("gastosChart");
+      const wrap   = canvas.parentElement;
+
+      // limpiar estado vacío previo
+      const old = wrap.querySelector(".chart-empty");
+      if (old) old.remove();
+
+      // agregar por período
+      const agrupado = {};
+      rows.forEach(row => {
+        const fecha = String(row["Fecha"] ?? "").substring(0, 10);
+        if (fecha.length < 7) return;
+        const [y, m, d] = fecha.split("-");
+        const meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+        const sortKey     = periodo === "dia" ? fecha : `${y}-${m}`;
+        const displayLabel = periodo === "dia" ? `${d}/${m}` : `${meses[+m - 1]} ${y}`;
+        const cat   = String(row["Categoría"] || "Otro");
+        const monto = parseFloat(row["Monto Total"]) || 0;
+        if (!agrupado[sortKey]) agrupado[sortKey] = { displayLabel, cats: {} };
+        agrupado[sortKey].cats[cat] = (agrupado[sortKey].cats[cat] || 0) + monto;
+      });
+
+      const keys = Object.keys(agrupado).sort();
+
+      if (!keys.length) {
+        canvas.style.display = "none";
+        const el = document.createElement("p");
+        el.className = "chart-empty";
+        el.textContent = "Sin datos para mostrar.";
+        wrap.appendChild(el);
+        return;
+      }
+
+      canvas.style.display = "";
+
+      // dimensiones
+      const dpr = window.devicePixelRatio || 1;
+      const W   = wrap.clientWidth  || 600;
+      const H   = wrap.clientHeight || 320;
+      canvas.width  = W * dpr;
+      canvas.height = H * dpr;
+      canvas.style.width  = W + "px";
+      canvas.style.height = H + "px";
+
+      const ctx = canvas.getContext("2d");
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, W, H);
+
+      // layout
+      const PAD_L = 72, PAD_R = 16, PAD_T = 16;
+      const LEG_H  = Math.ceil(CATEGORIAS.length / 3) * 22 + 8;
+      const X_H    = 32;
+      const PAD_B  = X_H + LEG_H;
+      const cW = W - PAD_L - PAD_R;
+      const cH = H - PAD_T - PAD_B;
+
+      // max
+      const totals  = keys.map(k => CATEGORIAS.reduce((s, c) => s + (agrupado[k].cats[c] || 0), 0));
+      const maxVal  = niceMax(Math.max(...totals));
+      const N_TICKS = 5;
+
+      const font = "11px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif";
+      ctx.font = font;
+
+      // gridlines + Y labels
+      for (let i = 0; i <= N_TICKS; i++) {
+        const val = (maxVal / N_TICKS) * i;
+        const y   = PAD_T + cH - (val / maxVal) * cH;
+
+        ctx.beginPath();
+        ctx.strokeStyle = i === 0 ? "#cbd5e0" : "#e2e8f0";
+        ctx.lineWidth   = 1;
+        ctx.moveTo(PAD_L, y);
+        ctx.lineTo(PAD_L + cW, y);
+        ctx.stroke();
+
+        const lbl = val >= 1e6 ? `$${(val/1e6).toFixed(1)}M`
+                  : val >= 1e3 ? `$${(val/1e3).toFixed(0)}k`
+                  : `$${val.toFixed(0)}`;
+        ctx.fillStyle    = "#718096";
+        ctx.textAlign    = "right";
+        ctx.textBaseline = "middle";
+        ctx.font = font;
+        ctx.fillText(lbl, PAD_L - 6, y);
+      }
+
+      // barras apiladas
+      const slotW  = cW / keys.length;
+      const barPad = Math.max(4, slotW * 0.2);
+      const barW   = slotW - barPad;
+
+      keys.forEach((k, i) => {
+        const x = PAD_L + i * slotW + barPad / 2;
+        let yBase = PAD_T + cH;
+
+        CATEGORIAS.forEach(cat => {
+          const val = agrupado[k].cats[cat] || 0;
+          if (!val) return;
+          const bH = (val / maxVal) * cH;
+          yBase -= bH;
+          ctx.fillStyle = COLORES_CAT[cat];
+          ctx.beginPath();
+          ctx.roundRect ? ctx.roundRect(x, yBase, barW, bH, [2, 2, 0, 0])
+                        : ctx.rect(x, yBase, barW, bH);
+          ctx.fill();
+        });
+
+        // etiqueta X
+        ctx.fillStyle    = "#718096";
+        ctx.textAlign    = "center";
+        ctx.textBaseline = "top";
+        ctx.font = font;
+        ctx.fillText(agrupado[k].displayLabel, x + barW / 2, PAD_T + cH + 8);
+      });
+
+      // leyenda
+      const LEG_Y    = H - LEG_H + 4;
+      const ITEM_W   = Math.floor(W / 3);
+      CATEGORIAS.forEach((cat, i) => {
+        const col = i % 3;
+        const row = Math.floor(i / 3);
+        const lx  = col * ITEM_W + 4;
+        const ly  = LEG_Y + row * 22;
+        ctx.fillStyle = COLORES_CAT[cat];
+        ctx.fillRect(lx, ly + 2, 12, 12);
+        ctx.fillStyle    = "#4a5568";
+        ctx.textAlign    = "left";
+        ctx.textBaseline = "middle";
+        ctx.font = font;
+        ctx.fillText(cat, lx + 16, ly + 8);
+      });
+    }
+
+    document.getElementById("periodoSelect").addEventListener("change", function () {
+      renderChart(rowsGlobal, this.value);
+    });
+
+    window.addEventListener("resize", () => {
+      if (rowsGlobal.length) renderChart(rowsGlobal, document.getElementById("periodoSelect").value);
+    });
 
     // ── Formateo ──────────────────────────────────────────────
     function fmtMonto(val) {
@@ -292,6 +522,9 @@
       try {
         const res  = await fetch(APPS_SCRIPT_URL);
         const rows = await res.json();
+
+        rowsGlobal = rows;
+        renderChart(rows, document.getElementById("periodoSelect").value);
 
         if (!rows.length) {
           wrap.innerHTML = '<p class="estado-vacio">Sin registros aún.</p>';
