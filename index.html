@@ -320,20 +320,19 @@
 
     /* ── Modal de edición ── */
     .modal-overlay {
+      display: none;
       position: fixed;
       inset: 0;
       background: rgba(0,0,0,0);
       z-index: 200;
-      display: flex;
       align-items: flex-end;
       justify-content: center;
-      pointer-events: none;
       transition: background 0.22s;
     }
 
     .modal-overlay.open {
+      display: flex;
       background: rgba(0,0,0,0.45);
-      pointer-events: auto;
     }
 
     .modal {
