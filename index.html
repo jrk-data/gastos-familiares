@@ -4,13 +4,70 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gastos Familiares</title>
-<style>
+  <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    html, body {
+      height: 100%;
       background: #f0f4f8;
-      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      overflow: hidden;
+    }
+
+    /* ── Shell ── */
+    .app {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex;
+      background: #fff;
+      border-bottom: 1.5px solid #e2e8f0;
+      flex-shrink: 0;
+      z-index: 10;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 0.875rem 0.5rem;
+      border: none;
+      border-bottom: 2.5px solid transparent;
+      background: transparent;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: #718096;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+      white-space: nowrap;
+    }
+
+    .tab.active { color: #4c6ef5; border-bottom-color: #4c6ef5; }
+    .tab:hover:not(.active) { color: #4a5568; background: #f7fafc; }
+
+    /* ── Slides ── */
+    .slides-viewport {
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .slides-track {
+      display: flex;
+      width: 300%;
+      height: 100%;
+      transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .slides-track.no-transition { transition: none; }
+
+    .slide {
+      width: calc(100% / 3);
+      height: 100%;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -18,6 +75,12 @@
       gap: 1.5rem;
     }
 
+    /* El slide del gráfico no scrollea: el canvas ocupa todo */
+    .slide-chart {
+      overflow: hidden;
+    }
+
+    /* ── Formulario ── */
     .card {
       background: #fff;
       border-radius: 12px;
@@ -110,7 +173,63 @@
     #mensaje.ok    { background: #c6f6d5; color: #276749; display: block; }
     #mensaje.error { background: #fed7d7; color: #9b2c2c; display: block; }
 
-    /* ── Tabla de historial ── */
+    /* ── Gráfico ── */
+    .chart-card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      padding: 1.5rem;
+      width: 100%;
+      max-width: 900px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .chart-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.25rem;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      flex-shrink: 0;
+    }
+
+    .chart-header h2 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #1a202c;
+    }
+
+    .periodo-select {
+      width: auto;
+      padding: 0.3rem 0.7rem;
+      font-size: 0.8rem;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 6px;
+      color: #4a5568;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    .chart-wrap {
+      flex: 1;
+      min-height: 150px;
+      position: relative;
+    }
+
+    .chart-empty {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: #718096;
+      font-size: 0.875rem;
+    }
+
+    /* ── Historial ── */
     .historial-card {
       background: #fff;
       border-radius: 12px;
@@ -148,7 +267,7 @@
 
     .tabla-wrap {
       overflow-y: auto;
-      max-height: 320px;
+      max-height: 420px;
       border: 1.5px solid #e2e8f0;
       border-radius: 8px;
     }
@@ -193,426 +312,412 @@
       font-size: 0.875rem;
     }
     .estado-error { color: #9b2c2c; }
-
-    /* ── Gráfico ── */
-    .chart-card {
-      background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
-      padding: 1.5rem;
-      width: 100%;
-      max-width: 900px;
-    }
-
-    .chart-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 1.25rem;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-    }
-
-    .chart-header h2 {
-      font-size: 1rem;
-      font-weight: 700;
-      color: #1a202c;
-    }
-
-    .periodo-select {
-      width: auto;
-      padding: 0.3rem 0.7rem;
-      font-size: 0.8rem;
-      border: 1.5px solid #e2e8f0;
-      border-radius: 6px;
-      color: #4a5568;
-      background: #fff;
-      cursor: pointer;
-    }
-
-    .chart-wrap {
-      position: relative;
-      height: 320px;
-    }
-
-    .chart-empty {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100%;
-      color: #718096;
-      font-size: 0.875rem;
-    }
   </style>
 </head>
 <body>
+<div class="app">
 
-  <!-- Formulario -->
-  <div class="card">
-    <h1>Gastos Familiares</h1>
-    <p class="subtitle">Registrá un nuevo gasto del hogar</p>
+  <!-- Tabs -->
+  <nav class="tabs">
+    <button class="tab active" data-idx="0">Registrar</button>
+    <button class="tab"        data-idx="1">Gráfico</button>
+    <button class="tab"        data-idx="2">Historial</button>
+  </nav>
 
-    <form id="gastoForm" novalidate>
+  <!-- Slides -->
+  <div class="slides-viewport" id="slidesViewport">
+    <div class="slides-track" id="slidesTrack">
 
-      <div class="field">
-        <label for="fecha">Fecha</label>
-        <input type="date" id="fecha" name="fecha" required />
-      </div>
-
-      <div class="field">
-        <label for="descripcion">Descripción</label>
-        <input type="text" id="descripcion" name="descripcion"
-               placeholder="Ej: Supermercado Día" maxlength="200" required />
-      </div>
-
-      <div class="field">
-        <label for="categoria">Categoría</label>
-        <select id="categoria" name="categoria" required>
-          <option value="" disabled selected>Seleccioná una categoría</option>
-          <option value="Alimentación">Alimentación</option>
-          <option value="Transporte">Transporte</option>
-          <option value="Salud">Salud</option>
-          <option value="Educación">Educación</option>
-          <option value="Servicios">Servicios</option>
-          <option value="Ropa">Ropa</option>
-          <option value="Entretenimiento">Entretenimiento</option>
-          <option value="Hogar">Hogar</option>
-          <option value="Otro">Otro</option>
-        </select>
-      </div>
-
-      <div class="field">
-        <label for="monto">Monto</label>
-        <div class="monto-wrap">
-          <span>$</span>
-          <input type="number" id="monto" name="monto"
-                 placeholder="0.00" min="0" step="0.01" required />
+      <!-- Slide 0: Formulario -->
+      <div class="slide">
+        <div class="card">
+          <h1>Gastos Familiares</h1>
+          <p class="subtitle">Registrá un nuevo gasto del hogar</p>
+          <form id="gastoForm" novalidate>
+            <div class="field">
+              <label for="fecha">Fecha</label>
+              <input type="date" id="fecha" name="fecha" required />
+            </div>
+            <div class="field">
+              <label for="descripcion">Descripción</label>
+              <input type="text" id="descripcion" name="descripcion"
+                     placeholder="Ej: Supermercado Día" maxlength="200" required />
+            </div>
+            <div class="field">
+              <label for="categoria">Categoría</label>
+              <select id="categoria" name="categoria" required>
+                <option value="" disabled selected>Seleccioná una categoría</option>
+                <option value="Alimentación">Alimentación</option>
+                <option value="Transporte">Transporte</option>
+                <option value="Salud">Salud</option>
+                <option value="Educación">Educación</option>
+                <option value="Servicios">Servicios</option>
+                <option value="Ropa">Ropa</option>
+                <option value="Entretenimiento">Entretenimiento</option>
+                <option value="Hogar">Hogar</option>
+                <option value="Otro">Otro</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="monto">Monto</label>
+              <div class="monto-wrap">
+                <span>$</span>
+                <input type="number" id="monto" name="monto"
+                       placeholder="0.00" min="0" step="0.01" required />
+              </div>
+            </div>
+            <div class="field">
+              <label for="quien">¿Quién pagó?</label>
+              <select id="quien" name="quien" required>
+                <option value="" disabled selected>Seleccioná una persona</option>
+                <option value="Joaco">Joaco</option>
+                <option value="Agus">Agus</option>
+              </select>
+            </div>
+            <button type="submit" class="btn" id="btnEnviar">Registrar gasto</button>
+            <div id="mensaje"></div>
+          </form>
         </div>
       </div>
 
-      <div class="field">
-        <label for="quien">¿Quién pagó?</label>
-        <select id="quien" name="quien" required>
-          <option value="" disabled selected>Seleccioná una persona</option>
-          <option value="Joaco">Joaco</option>
-          <option value="Agus">Agus</option>
-        </select>
+      <!-- Slide 1: Gráfico -->
+      <div class="slide slide-chart">
+        <div class="chart-card">
+          <div class="chart-header">
+            <h2>Gastos por categoría</h2>
+            <select id="periodoSelect" class="periodo-select">
+              <option value="dia">Por día</option>
+              <option value="mes">Por mes</option>
+            </select>
+          </div>
+          <div class="chart-wrap" id="chartWrap">
+            <canvas id="gastosChart"></canvas>
+          </div>
+        </div>
       </div>
 
-      <button type="submit" class="btn" id="btnEnviar">Registrar gasto</button>
-      <div id="mensaje"></div>
-    </form>
-  </div>
+      <!-- Slide 2: Historial -->
+      <div class="slide">
+        <div class="historial-card">
+          <div class="historial-header">
+            <h2>Historial de gastos</h2>
+            <button class="btn-reload" id="btnRecargar">Actualizar</button>
+          </div>
+          <div class="tabla-wrap" id="tablaWrap">
+            <p class="estado-cargando">Cargando…</p>
+          </div>
+        </div>
+      </div>
 
-  <!-- Gráfico -->
-  <div class="chart-card">
-    <div class="chart-header">
-      <h2>Gastos por categoría</h2>
-      <select id="periodoSelect" class="periodo-select">
-        <option value="dia">Por día</option>
-        <option value="mes">Por mes</option>
-      </select>
-    </div>
-    <div class="chart-wrap">
-      <canvas id="gastosChart"></canvas>
     </div>
   </div>
 
-  <!-- Historial -->
-  <div class="historial-card">
-    <div class="historial-header">
-      <h2>Historial de gastos</h2>
-      <button class="btn-reload" id="btnRecargar">Actualizar</button>
-    </div>
-    <div class="tabla-wrap" id="tablaWrap">
-      <p class="estado-cargando">Cargando…</p>
-    </div>
-  </div>
+</div>
+<script>
+  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwgH0t0cbO4juI-YBh1v8FvX24pM9X4KY_v2SOUvTRC0hVHoh4rG433wiTRNMysP4hQGw/exec";
 
-  <script>
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwgH0t0cbO4juI-YBh1v8FvX24pM9X4KY_v2SOUvTRC0hVHoh4rG433wiTRNMysP4hQGw/exec";
+  document.getElementById("fecha").valueAsDate = new Date();
 
-    document.getElementById("fecha").valueAsDate = new Date();
+  // ── Navegación tabs / swipe ───────────────────────────────
+  const track    = document.getElementById("slidesTrack");
+  const tabs     = document.querySelectorAll(".tab");
+  let currentIdx = 0;
 
-    // ── Gráfico (canvas puro, sin dependencias) ───────────────
-    const CATEGORIAS = ["Alimentación","Transporte","Salud","Educación","Servicios","Ropa","Entretenimiento","Hogar","Otro"];
-    const COLORES_CAT = {
-      "Alimentación":    "#4c6ef5",
-      "Transporte":      "#f59f00",
-      "Salud":           "#40c057",
-      "Educación":       "#fa5252",
-      "Servicios":       "#7950f2",
-      "Ropa":            "#fd7e14",
-      "Entretenimiento": "#15aabf",
-      "Hogar":           "#e64980",
-      "Otro":            "#868e96",
-    };
+  function goTo(idx) {
+    currentIdx = Math.max(0, Math.min(2, idx));
+    track.style.transform = `translateX(${-currentIdx * (100 / 3)}%)`;
+    tabs.forEach((t, i) => t.classList.toggle("active", i === currentIdx));
+    if (currentIdx === 1 && rowsGlobal.length) {
+      requestAnimationFrame(() => renderChart(rowsGlobal, document.getElementById("periodoSelect").value));
+    }
+  }
 
-    let rowsGlobal = [];
+  tabs.forEach(tab => tab.addEventListener("click", () => goTo(+tab.dataset.idx)));
 
-    function niceMax(val) {
-      if (val <= 0) return 1000;
-      const exp  = Math.pow(10, Math.floor(Math.log10(val)));
-      const f    = val / exp;
-      const nice = f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10;
-      return nice * exp;
+  // Swipe táctil
+  const vp = document.getElementById("slidesViewport");
+  let touchX = 0, touchY = 0, swiping = false;
+
+  vp.addEventListener("touchstart", e => {
+    touchX   = e.touches[0].clientX;
+    touchY   = e.touches[0].clientY;
+    swiping  = false;
+  }, { passive: true });
+
+  vp.addEventListener("touchmove", e => {
+    if (!swiping) {
+      const dx = Math.abs(e.touches[0].clientX - touchX);
+      const dy = Math.abs(e.touches[0].clientY - touchY);
+      if (dx > dy && dx > 8) swiping = true;
+    }
+    if (swiping) e.preventDefault();
+  }, { passive: false });
+
+  vp.addEventListener("touchend", e => {
+    if (!swiping) return;
+    const dx = e.changedTouches[0].clientX - touchX;
+    if (Math.abs(dx) > 48) goTo(currentIdx + (dx < 0 ? 1 : -1));
+    swiping = false;
+  });
+
+  // ── Gráfico (canvas puro) ────────────────────────────────
+  const CATEGORIAS = ["Alimentación","Transporte","Salud","Educación","Servicios","Ropa","Entretenimiento","Hogar","Otro"];
+  const COLORES_CAT = {
+    "Alimentación":    "#4c6ef5",
+    "Transporte":      "#f59f00",
+    "Salud":           "#40c057",
+    "Educación":       "#fa5252",
+    "Servicios":       "#7950f2",
+    "Ropa":            "#fd7e14",
+    "Entretenimiento": "#15aabf",
+    "Hogar":           "#e64980",
+    "Otro":            "#868e96",
+  };
+
+  let rowsGlobal = [];
+
+  function niceMax(val) {
+    if (val <= 0) return 1000;
+    const exp  = Math.pow(10, Math.floor(Math.log10(val)));
+    const f    = val / exp;
+    const nice = f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10;
+    return nice * exp;
+  }
+
+  function renderChart(rows, periodo) {
+    const canvas = document.getElementById("gastosChart");
+    const wrap   = document.getElementById("chartWrap");
+
+    const old = wrap.querySelector(".chart-empty");
+    if (old) old.remove();
+
+    const agrupado = {};
+    rows.forEach(row => {
+      const fecha = String(row["Fecha"] ?? "").substring(0, 10);
+      if (fecha.length < 7) return;
+      const [y, m, d] = fecha.split("-");
+      const meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+      const sortKey      = periodo === "dia" ? fecha : `${y}-${m}`;
+      const displayLabel = periodo === "dia" ? `${d}/${m}` : `${meses[+m - 1]} ${y}`;
+      const cat   = String(row["Categoría"] || "Otro");
+      const monto = parseFloat(row["Monto Total"]) || 0;
+      if (!agrupado[sortKey]) agrupado[sortKey] = { displayLabel, cats: {} };
+      agrupado[sortKey].cats[cat] = (agrupado[sortKey].cats[cat] || 0) + monto;
+    });
+
+    const keys = Object.keys(agrupado).sort();
+
+    if (!keys.length) {
+      canvas.style.display = "none";
+      const el = document.createElement("p");
+      el.className = "chart-empty";
+      el.textContent = "Sin datos para mostrar.";
+      wrap.appendChild(el);
+      return;
     }
 
-    function renderChart(rows, periodo) {
-      const canvas = document.getElementById("gastosChart");
-      const wrap   = canvas.parentElement;
+    canvas.style.display = "";
 
-      // limpiar estado vacío previo
-      const old = wrap.querySelector(".chart-empty");
-      if (old) old.remove();
+    const dpr = window.devicePixelRatio || 1;
+    const W   = wrap.clientWidth  || 600;
+    const H   = wrap.clientHeight || 320;
+    canvas.width        = W * dpr;
+    canvas.height       = H * dpr;
+    canvas.style.width  = W + "px";
+    canvas.style.height = H + "px";
 
-      // agregar por período
-      const agrupado = {};
-      rows.forEach(row => {
-        const fecha = String(row["Fecha"] ?? "").substring(0, 10);
-        if (fecha.length < 7) return;
-        const [y, m, d] = fecha.split("-");
-        const meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
-        const sortKey     = periodo === "dia" ? fecha : `${y}-${m}`;
-        const displayLabel = periodo === "dia" ? `${d}/${m}` : `${meses[+m - 1]} ${y}`;
-        const cat   = String(row["Categoría"] || "Otro");
-        const monto = parseFloat(row["Monto Total"]) || 0;
-        if (!agrupado[sortKey]) agrupado[sortKey] = { displayLabel, cats: {} };
-        agrupado[sortKey].cats[cat] = (agrupado[sortKey].cats[cat] || 0) + monto;
+    const ctx = canvas.getContext("2d");
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, W, H);
+
+    const PAD_L  = 72, PAD_R = 16, PAD_T = 16;
+    const LEG_H  = Math.ceil(CATEGORIAS.length / 3) * 22 + 8;
+    const PAD_B  = 32 + LEG_H;
+    const cW = W - PAD_L - PAD_R;
+    const cH = H - PAD_T - PAD_B;
+
+    const totals = keys.map(k => CATEGORIAS.reduce((s, c) => s + (agrupado[k].cats[c] || 0), 0));
+    const maxVal = niceMax(Math.max(...totals));
+    const N_TICKS = 5;
+    const font = "11px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif";
+
+    // Gridlines + Y labels
+    for (let i = 0; i <= N_TICKS; i++) {
+      const val = (maxVal / N_TICKS) * i;
+      const y   = PAD_T + cH - (val / maxVal) * cH;
+      ctx.beginPath();
+      ctx.strokeStyle = i === 0 ? "#cbd5e0" : "#e2e8f0";
+      ctx.lineWidth   = 1;
+      ctx.moveTo(PAD_L, y);
+      ctx.lineTo(PAD_L + cW, y);
+      ctx.stroke();
+      const lbl = val >= 1e6 ? `$${(val/1e6).toFixed(1)}M`
+                : val >= 1e3 ? `$${(val/1e3).toFixed(0)}k`
+                : `$${val.toFixed(0)}`;
+      ctx.fillStyle    = "#718096";
+      ctx.textAlign    = "right";
+      ctx.textBaseline = "middle";
+      ctx.font = font;
+      ctx.fillText(lbl, PAD_L - 6, y);
+    }
+
+    // Barras apiladas
+    const slotW  = cW / keys.length;
+    const barPad = Math.max(4, slotW * 0.2);
+    const barW   = slotW - barPad;
+
+    keys.forEach((k, i) => {
+      const x = PAD_L + i * slotW + barPad / 2;
+      let yBase = PAD_T + cH;
+      CATEGORIAS.forEach(cat => {
+        const val = agrupado[k].cats[cat] || 0;
+        if (!val) return;
+        const bH = (val / maxVal) * cH;
+        yBase -= bH;
+        ctx.fillStyle = COLORES_CAT[cat];
+        ctx.beginPath();
+        ctx.roundRect ? ctx.roundRect(x, yBase, barW, bH, [2, 2, 0, 0])
+                      : ctx.rect(x, yBase, barW, bH);
+        ctx.fill();
       });
+      ctx.fillStyle    = "#718096";
+      ctx.textAlign    = "center";
+      ctx.textBaseline = "top";
+      ctx.font = font;
+      ctx.fillText(agrupado[k].displayLabel, x + barW / 2, PAD_T + cH + 8);
+    });
 
-      const keys = Object.keys(agrupado).sort();
+    // Leyenda
+    const LEG_Y  = H - LEG_H + 4;
+    const ITEM_W = Math.floor(W / 3);
+    CATEGORIAS.forEach((cat, i) => {
+      const col = i % 3;
+      const row = Math.floor(i / 3);
+      const lx  = col * ITEM_W + 4;
+      const ly  = LEG_Y + row * 22;
+      ctx.fillStyle = COLORES_CAT[cat];
+      ctx.fillRect(lx, ly + 2, 12, 12);
+      ctx.fillStyle    = "#4a5568";
+      ctx.textAlign    = "left";
+      ctx.textBaseline = "middle";
+      ctx.font = font;
+      ctx.fillText(cat, lx + 16, ly + 8);
+    });
+  }
 
-      if (!keys.length) {
-        canvas.style.display = "none";
-        const el = document.createElement("p");
-        el.className = "chart-empty";
-        el.textContent = "Sin datos para mostrar.";
-        wrap.appendChild(el);
+  document.getElementById("periodoSelect").addEventListener("change", function () {
+    renderChart(rowsGlobal, this.value);
+  });
+
+  window.addEventListener("resize", () => {
+    if (currentIdx === 1 && rowsGlobal.length) {
+      renderChart(rowsGlobal, document.getElementById("periodoSelect").value);
+    }
+  });
+
+  // ── Formateo ─────────────────────────────────────────────
+  function fmtMonto(val) {
+    const n = parseFloat(val);
+    if (isNaN(n)) return "-";
+    return "$ " + n.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function fmtFecha(val) {
+    if (!val) return "-";
+    const s = String(val).substring(0, 10);
+    const [y, m, d] = s.split("-");
+    return `${d}/${m}/${y}`;
+  }
+
+  // ── Cargar historial ──────────────────────────────────────
+  async function cargarHistorial() {
+    const wrap = document.getElementById("tablaWrap");
+    wrap.innerHTML = '<p class="estado-cargando">Cargando…</p>';
+    try {
+      const res  = await fetch(APPS_SCRIPT_URL);
+      const rows = await res.json();
+
+      rowsGlobal = rows;
+      if (currentIdx === 1) {
+        renderChart(rows, document.getElementById("periodoSelect").value);
+      }
+
+      if (!rows.length) {
+        wrap.innerHTML = '<p class="estado-vacio">Sin registros aún.</p>';
         return;
       }
 
-      canvas.style.display = "";
+      const cols = [
+        { key: "Fecha",              fmt: fmtFecha, num: false },
+        { key: "Descripción",        fmt: v => v,   num: false },
+        { key: "Categoría",          fmt: v => v,   num: false },
+        { key: "Monto Total",        fmt: fmtMonto, num: true  },
+        { key: "Moneda",             fmt: v => v,   num: false },
+        { key: "Pagado por",         fmt: v => v,   num: false },
+        { key: "Mi parte",           fmt: fmtMonto, num: true  },
+        { key: "Parte otra persona", fmt: fmtMonto, num: true  },
+      ];
 
-      // dimensiones
-      const dpr = window.devicePixelRatio || 1;
-      const W   = wrap.clientWidth  || 600;
-      const H   = wrap.clientHeight || 320;
-      canvas.width  = W * dpr;
-      canvas.height = H * dpr;
-      canvas.style.width  = W + "px";
-      canvas.style.height = H + "px";
-
-      const ctx = canvas.getContext("2d");
-      ctx.scale(dpr, dpr);
-      ctx.clearRect(0, 0, W, H);
-
-      // layout
-      const PAD_L = 72, PAD_R = 16, PAD_T = 16;
-      const LEG_H  = Math.ceil(CATEGORIAS.length / 3) * 22 + 8;
-      const X_H    = 32;
-      const PAD_B  = X_H + LEG_H;
-      const cW = W - PAD_L - PAD_R;
-      const cH = H - PAD_T - PAD_B;
-
-      // max
-      const totals  = keys.map(k => CATEGORIAS.reduce((s, c) => s + (agrupado[k].cats[c] || 0), 0));
-      const maxVal  = niceMax(Math.max(...totals));
-      const N_TICKS = 5;
-
-      const font = "11px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif";
-      ctx.font = font;
-
-      // gridlines + Y labels
-      for (let i = 0; i <= N_TICKS; i++) {
-        const val = (maxVal / N_TICKS) * i;
-        const y   = PAD_T + cH - (val / maxVal) * cH;
-
-        ctx.beginPath();
-        ctx.strokeStyle = i === 0 ? "#cbd5e0" : "#e2e8f0";
-        ctx.lineWidth   = 1;
-        ctx.moveTo(PAD_L, y);
-        ctx.lineTo(PAD_L + cW, y);
-        ctx.stroke();
-
-        const lbl = val >= 1e6 ? `$${(val/1e6).toFixed(1)}M`
-                  : val >= 1e3 ? `$${(val/1e3).toFixed(0)}k`
-                  : `$${val.toFixed(0)}`;
-        ctx.fillStyle    = "#718096";
-        ctx.textAlign    = "right";
-        ctx.textBaseline = "middle";
-        ctx.font = font;
-        ctx.fillText(lbl, PAD_L - 6, y);
-      }
-
-      // barras apiladas
-      const slotW  = cW / keys.length;
-      const barPad = Math.max(4, slotW * 0.2);
-      const barW   = slotW - barPad;
-
-      keys.forEach((k, i) => {
-        const x = PAD_L + i * slotW + barPad / 2;
-        let yBase = PAD_T + cH;
-
-        CATEGORIAS.forEach(cat => {
-          const val = agrupado[k].cats[cat] || 0;
-          if (!val) return;
-          const bH = (val / maxVal) * cH;
-          yBase -= bH;
-          ctx.fillStyle = COLORES_CAT[cat];
-          ctx.beginPath();
-          ctx.roundRect ? ctx.roundRect(x, yBase, barW, bH, [2, 2, 0, 0])
-                        : ctx.rect(x, yBase, barW, bH);
-          ctx.fill();
+      let html = "<table><thead><tr>";
+      cols.forEach(c => { html += `<th>${c.key}</th>`; });
+      html += "</tr></thead><tbody>";
+      rows.forEach(row => {
+        html += "<tr>";
+        cols.forEach(c => {
+          const cls = c.num ? ' class="monto-num"' : "";
+          html += `<td${cls}>${c.fmt(row[c.key] ?? "")}</td>`;
         });
-
-        // etiqueta X
-        ctx.fillStyle    = "#718096";
-        ctx.textAlign    = "center";
-        ctx.textBaseline = "top";
-        ctx.font = font;
-        ctx.fillText(agrupado[k].displayLabel, x + barW / 2, PAD_T + cH + 8);
+        html += "</tr>";
       });
+      html += "</tbody></table>";
+      wrap.innerHTML = html;
+    } catch (err) {
+      wrap.innerHTML = '<p class="estado-error">No se pudo cargar el historial.</p>';
+    }
+  }
 
-      // leyenda
-      const LEG_Y    = H - LEG_H + 4;
-      const ITEM_W   = Math.floor(W / 3);
-      CATEGORIAS.forEach((cat, i) => {
-        const col = i % 3;
-        const row = Math.floor(i / 3);
-        const lx  = col * ITEM_W + 4;
-        const ly  = LEG_Y + row * 22;
-        ctx.fillStyle = COLORES_CAT[cat];
-        ctx.fillRect(lx, ly + 2, 12, 12);
-        ctx.fillStyle    = "#4a5568";
-        ctx.textAlign    = "left";
-        ctx.textBaseline = "middle";
-        ctx.font = font;
-        ctx.fillText(cat, lx + 16, ly + 8);
+  // ── Envío del formulario ──────────────────────────────────
+  document.getElementById("gastoForm").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const form = e.target;
+    const btn  = document.getElementById("btnEnviar");
+    const msg  = document.getElementById("mensaje");
+    if (!form.checkValidity()) { form.reportValidity(); return; }
+    const data = {
+      fecha:       document.getElementById("fecha").value,
+      descripcion: document.getElementById("descripcion").value.trim(),
+      categoria:   document.getElementById("categoria").value,
+      monto:       parseFloat(document.getElementById("monto").value),
+      quien:       document.getElementById("quien").value,
+    };
+    btn.disabled    = true;
+    btn.textContent = "Enviando…";
+    msg.className   = "";
+    msg.style.display = "none";
+    try {
+      await fetch(APPS_SCRIPT_URL, {
+        method:  "POST",
+        mode:    "no-cors",
+        headers: { "Content-Type": "text/plain" },
+        body:    JSON.stringify(data),
       });
+      msg.textContent = "Gasto registrado correctamente.";
+      msg.className   = "ok";
+      form.reset();
+      document.getElementById("fecha").valueAsDate = new Date();
+      setTimeout(cargarHistorial, 1500);
+    } catch (err) {
+      msg.textContent = "Error al enviar. Revisá tu conexión e intentá de nuevo.";
+      msg.className   = "error";
+    } finally {
+      btn.disabled    = false;
+      btn.textContent = "Registrar gasto";
     }
+  });
 
-    document.getElementById("periodoSelect").addEventListener("change", function () {
-      renderChart(rowsGlobal, this.value);
-    });
+  document.getElementById("btnRecargar").addEventListener("click", cargarHistorial);
 
-    window.addEventListener("resize", () => {
-      if (rowsGlobal.length) renderChart(rowsGlobal, document.getElementById("periodoSelect").value);
-    });
-
-    // ── Formateo ──────────────────────────────────────────────
-    function fmtMonto(val) {
-      const n = parseFloat(val);
-      if (isNaN(n)) return "-";
-      return "$ " + n.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    }
-
-    function fmtFecha(val) {
-      if (!val) return "-";
-      // val puede ser "2026-03-29" o un Date serializado
-      const s = String(val).substring(0, 10);
-      const [y, m, d] = s.split("-");
-      return `${d}/${m}/${y}`;
-    }
-
-    // ── Cargar historial ──────────────────────────────────────
-    async function cargarHistorial() {
-      const wrap = document.getElementById("tablaWrap");
-      wrap.innerHTML = '<p class="estado-cargando">Cargando…</p>';
-      try {
-        const res  = await fetch(APPS_SCRIPT_URL);
-        const rows = await res.json();
-
-        rowsGlobal = rows;
-        renderChart(rows, document.getElementById("periodoSelect").value);
-
-        if (!rows.length) {
-          wrap.innerHTML = '<p class="estado-vacio">Sin registros aún.</p>';
-          return;
-        }
-
-        const cols = [
-          { key: "Fecha",               fmt: fmtFecha,  num: false },
-          { key: "Descripción",         fmt: v => v,    num: false },
-          { key: "Categoría",           fmt: v => v,    num: false },
-          { key: "Monto Total",         fmt: fmtMonto,  num: true  },
-          { key: "Moneda",              fmt: v => v,    num: false },
-          { key: "Pagado por",          fmt: v => v,    num: false },
-          { key: "Mi parte",            fmt: fmtMonto,  num: true  },
-          { key: "Parte otra persona",  fmt: fmtMonto,  num: true  },
-        ];
-
-        let html = "<table><thead><tr>";
-        cols.forEach(c => { html += `<th>${c.key}</th>`; });
-        html += "</tr></thead><tbody>";
-
-        rows.forEach(row => {
-          html += "<tr>";
-          cols.forEach(c => {
-            const cls = c.num ? ' class="monto-num"' : "";
-            html += `<td${cls}>${c.fmt(row[c.key] ?? "")}</td>`;
-          });
-          html += "</tr>";
-        });
-
-        html += "</tbody></table>";
-        wrap.innerHTML = html;
-      } catch (err) {
-        wrap.innerHTML = '<p class="estado-error">No se pudo cargar el historial.</p>';
-      }
-    }
-
-    // ── Envío del formulario ──────────────────────────────────
-    document.getElementById("gastoForm").addEventListener("submit", async function (e) {
-      e.preventDefault();
-
-      const form = e.target;
-      const btn  = document.getElementById("btnEnviar");
-      const msg  = document.getElementById("mensaje");
-
-      if (!form.checkValidity()) { form.reportValidity(); return; }
-
-      const data = {
-        fecha:       document.getElementById("fecha").value,
-        descripcion: document.getElementById("descripcion").value.trim(),
-        categoria:   document.getElementById("categoria").value,
-        monto:       parseFloat(document.getElementById("monto").value),
-        quien:       document.getElementById("quien").value,
-      };
-
-      btn.disabled    = true;
-      btn.textContent = "Enviando…";
-      msg.className   = "";
-      msg.style.display = "none";
-
-      try {
-        await fetch(APPS_SCRIPT_URL, {
-          method:  "POST",
-          mode:    "no-cors",
-          headers: { "Content-Type": "text/plain" },
-          body:    JSON.stringify(data),
-        });
-
-        msg.textContent = "Gasto registrado correctamente.";
-        msg.className   = "ok";
-        form.reset();
-        document.getElementById("fecha").valueAsDate = new Date();
-
-        // Esperar un momento para que el sheet se actualice antes de recargar
-        setTimeout(cargarHistorial, 1500);
-      } catch (err) {
-        msg.textContent = "Error al enviar. Revisá tu conexión e intentá de nuevo.";
-        msg.className   = "error";
-      } finally {
-        btn.disabled    = false;
-        btn.textContent = "Registrar gasto";
-      }
-    });
-
-    document.getElementById("btnRecargar").addEventListener("click", cargarHistorial);
-
-    // Carga inicial
-    cargarHistorial();
-  </script>
+  cargarHistorial();
+</script>
 </body>
 </html>
