@@ -582,6 +582,28 @@
     .bal-resumen.joaco-debe { background: #fff5f5; color: #c53030; }
     .bal-resumen.agus-debe  { background: #ebf8ff; color: #2b6cb0; }
     .bal-resumen.al-dia     { background: #f0fff4; color: #276749; }
+
+    .btn-conciliar {
+      width: 100%;
+      margin-top: 0.75rem;
+      padding: 0.75rem;
+      background: #fff;
+      color: #4c6ef5;
+      border: 1.5px solid #4c6ef5;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .btn-conciliar:hover { background: #ebf4ff; }
+    .btn-conciliar.confirming {
+      background: #4c6ef5;
+      color: #fff;
+    }
+    .btn-conciliar:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    tbody tr.conciliacion td { color: #a0aec0; font-style: italic; }
   </style>
 </head>
 <body>
@@ -721,6 +743,7 @@
             </div>
           </div>
           <div id="balResumen" class="bal-resumen"></div>
+          <button id="btnConciliar" class="btn-conciliar" style="display:none"></button>
         </div>
       </div>
 
@@ -856,6 +879,7 @@
   }
 
   function renderChart(rows, periodo) {
+    rows = rows.filter(r => r["Categoría"] !== "Pago de Saldo");
     const canvas = document.getElementById("gastosChart");
     const wrap   = document.getElementById("chartWrap");
     const old    = wrap.querySelector(".chart-empty");
@@ -1025,22 +1049,32 @@
   }
 
   // ── Balance ───────────────────────────────────────────────
+  let conciliarTimer  = null;
+  let conciliarState  = null; // { ym, debtor, monto }
+
   function renderBalance(rows) {
-    const ym = document.getElementById("balanceMesSelect").value;
+    const ym        = document.getElementById("balanceMesSelect").value;
     const filtradas = rowsDelMes(rows, ym);
-    const total = filtradas.reduce((s, r) => s + (parseFloat(r["Monto Total"]) || 0), 0);
-    const pagJoaco = filtradas.filter(r => r["Pagado por"] === "Joaco")
-                              .reduce((s, r) => s + (parseFloat(r["Monto Total"]) || 0), 0);
-    const pagAgus  = filtradas.filter(r => r["Pagado por"] === "Agus")
-                              .reduce((s, r) => s + (parseFloat(r["Monto Total"]) || 0), 0);
+
+    const regulares   = filtradas.filter(r => r["Categoría"] !== "Pago de Saldo");
+    const conciliadas = filtradas.filter(r => r["Categoría"] === "Pago de Saldo");
+
+    const sum = (arr, pred) => arr.filter(pred).reduce((s, r) => s + (parseFloat(r["Monto Total"]) || 0), 0);
+
+    const total    = sum(regulares, () => true);
+    const pagJoaco = sum(regulares, r => r["Pagado por"] === "Joaco");
+    const pagAgus  = sum(regulares, r => r["Pagado por"] === "Agus");
     const debJoaco = total * 0.70;
     const debAgus  = total * 0.30;
-    const difJoaco = pagJoaco - debJoaco;
 
-    document.getElementById("balTotalMes").textContent    = fmtMonto(total);
-    document.getElementById("balJoacoPago").textContent   = fmtMonto(pagJoaco);
+    const offsetJoaco = sum(conciliadas, r => r["Pagado por"] === "Joaco")
+                      - sum(conciliadas, r => r["Pagado por"] === "Agus");
+    const difJoaco = (pagJoaco - debJoaco) + offsetJoaco;
+
+    document.getElementById("balTotalMes").textContent     = fmtMonto(total);
+    document.getElementById("balJoacoPago").textContent    = fmtMonto(pagJoaco);
     document.getElementById("balJoacoDeberia").textContent = fmtMonto(debJoaco);
-    document.getElementById("balAgusPago").textContent    = fmtMonto(pagAgus);
+    document.getElementById("balAgusPago").textContent     = fmtMonto(pagAgus);
     document.getElementById("balAgusDeberia").textContent  = fmtMonto(debAgus);
 
     const difJEl = document.getElementById("balJoacoDif");
@@ -1052,20 +1086,70 @@
     difAEl.className   = "bal-dif " + (difJoaco <= 0 ? "favor" : "contra");
 
     const res = document.getElementById("balResumen");
-    if (total === 0) {
-      res.textContent = "Sin gastos en este período.";
-      res.className   = "bal-resumen";
+    const btn = document.getElementById("btnConciliar");
+    resetConciliarBtn();
+
+    if (total === 0 && conciliadas.length === 0) {
+      res.textContent  = "Sin gastos en este período.";
+      res.className    = "bal-resumen";
+      btn.style.display = "none";
     } else if (Math.abs(difJoaco) < 0.01) {
-      res.textContent = "¡Están al día!";
-      res.className   = "bal-resumen al-dia";
+      res.textContent  = "¡Están al día!";
+      res.className    = "bal-resumen al-dia";
+      btn.style.display = "none";
     } else if (difJoaco < 0) {
-      res.innerHTML = `Joaco le debe <strong>${fmtMonto(Math.abs(difJoaco))}</strong> a Agus`;
-      res.className = "bal-resumen joaco-debe";
+      const monto = Math.abs(difJoaco);
+      res.innerHTML     = `Joaco le debe <strong>${fmtMonto(monto)}</strong> a Agus`;
+      res.className     = "bal-resumen joaco-debe";
+      btn.textContent   = `Conciliar: Joaco le paga ${fmtMonto(monto)} a Agus`;
+      btn.style.display = "";
+      conciliarState    = { ym, debtor: "Joaco", monto };
     } else {
-      res.innerHTML = `Agus le debe <strong>${fmtMonto(difJoaco)}</strong> a Joaco`;
-      res.className = "bal-resumen agus-debe";
+      const monto = difJoaco;
+      res.innerHTML     = `Agus le debe <strong>${fmtMonto(monto)}</strong> a Joaco`;
+      res.className     = "bal-resumen agus-debe";
+      btn.textContent   = `Conciliar: Agus le paga ${fmtMonto(monto)} a Joaco`;
+      btn.style.display = "";
+      conciliarState    = { ym, debtor: "Agus", monto };
     }
   }
+
+  function resetConciliarBtn() {
+    clearTimeout(conciliarTimer);
+    const btn = document.getElementById("btnConciliar");
+    btn.classList.remove("confirming");
+    btn.disabled = false;
+    if (conciliarState) btn.textContent = conciliarState.debtor === "Joaco"
+      ? `Conciliar: Joaco le paga ${fmtMonto(conciliarState.monto)} a Agus`
+      : `Conciliar: Agus le paga ${fmtMonto(conciliarState.monto)} a Joaco`;
+  }
+
+  document.getElementById("btnConciliar").addEventListener("click", async () => {
+    const btn = document.getElementById("btnConciliar");
+    if (!btn.classList.contains("confirming")) {
+      btn.textContent = "¿Confirmar conciliación?";
+      btn.classList.add("confirming");
+      conciliarTimer = setTimeout(resetConciliarBtn, 3000);
+      return;
+    }
+    clearTimeout(conciliarTimer);
+    btn.disabled = true;
+
+    const { ym, debtor, monto } = conciliarState;
+    const [y, m] = ym.split("-");
+    const lastDay = new Date(+y, +m, 0).getDate();
+    const fecha   = `${ym}-${String(lastDay).padStart(2, "0")}`;
+    const desc    = `Conciliación ${MESES_LARGOS[+m - 1]} ${y}`;
+
+    await fetch(APPS_SCRIPT_URL, {
+      method:  "POST",
+      mode:    "no-cors",
+      headers: { "Content-Type": "text/plain" },
+      body:    JSON.stringify({ fecha, descripcion: desc, categoria: "Pago de Saldo", monto, quien: debtor }),
+    });
+
+    setTimeout(cargarHistorial, 800);
+  });
 
   // ── Historial ─────────────────────────────────────────────
   function renderHistorialFiltrado() {
@@ -1114,7 +1198,8 @@
     cols.forEach(c => { html += `<th>${c.label}</th>`; });
     html += "</tr></thead><tbody>";
     rows.forEach((row, i) => {
-      html += `<tr data-idx="${i}">`;
+      const esConciliacion = row["Categoría"] === "Pago de Saldo";
+      html += `<tr data-idx="${i}"${esConciliacion ? ' class="conciliacion"' : ""}>`;
       cols.forEach(c => {
         const cls = c.num ? ' class="monto-num"' : "";
         html += `<td${cls}>${c.fmt(row[c.key] ?? "")}</td>`;
