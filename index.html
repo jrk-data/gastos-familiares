@@ -56,7 +56,7 @@
 
     .slides-track {
       display: flex;
-      width: 300%;
+      width: 400%;
       height: 100%;
       transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
     }
@@ -64,7 +64,7 @@
     .slides-track.no-transition { transition: none; }
 
     .slide {
-      width: calc(100% / 3);
+      width: calc(100% / 4);
       height: 100%;
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
@@ -423,6 +423,165 @@
     }
     .btn-save:hover { background: #3b5bdb; }
     .btn-save:disabled { background: #a0aec0; cursor: not-allowed; }
+
+    /* ── Tarjeta total del mes ── */
+    .total-card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      padding: 1.25rem 1.5rem;
+      width: 100%;
+      max-width: 900px;
+      flex-shrink: 0;
+    }
+
+    .total-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+    }
+
+    .total-header h2 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #1a202c;
+    }
+
+    .total-monto {
+      font-size: 1.75rem;
+      font-weight: 800;
+      color: #4c6ef5;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.5rem;
+    }
+
+    .total-breakdown {
+      display: flex;
+      gap: 1.5rem;
+    }
+
+    .total-persona {
+      display: flex;
+      flex-direction: column;
+      font-size: 0.8125rem;
+      color: #718096;
+    }
+
+    .total-persona-nombre {
+      font-weight: 700;
+      color: #4a5568;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.04em;
+    }
+
+    .total-persona-monto {
+      font-size: 0.9375rem;
+      color: #2d3748;
+      font-weight: 600;
+    }
+
+    /* ── Balance ── */
+    .balance-card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      padding: 1.5rem;
+      width: 100%;
+      max-width: 640px;
+    }
+
+    .balance-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+    }
+
+    .balance-header h2 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #1a202c;
+    }
+
+    .bal-total-label {
+      font-size: 0.875rem;
+      color: #718096;
+      margin-bottom: 1.25rem;
+    }
+
+    .bal-total-label strong {
+      color: #2d3748;
+    }
+
+    .bal-personas {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .bal-persona {
+      border: 1.5px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 1rem;
+    }
+
+    .bal-persona-nombre {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #1a202c;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .bal-porcentaje {
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: #edf2f7;
+      color: #718096;
+      border-radius: 999px;
+      padding: 0.1rem 0.45rem;
+    }
+
+    .bal-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8125rem;
+      color: #718096;
+      padding: 0.25rem 0;
+      border-bottom: 1px solid #f7fafc;
+    }
+
+    .bal-row:last-child { border-bottom: none; }
+
+    .bal-row span:last-child {
+      font-weight: 600;
+      color: #2d3748;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .bal-dif { font-weight: 700 !important; }
+    .bal-dif.favor  { color: #276749 !important; }
+    .bal-dif.contra { color: #c53030 !important; }
+
+    .bal-resumen {
+      background: #f7fafc;
+      border-radius: 8px;
+      padding: 0.875rem 1rem;
+      text-align: center;
+      font-size: 0.9375rem;
+      color: #4a5568;
+    }
+
+    .bal-resumen strong { font-weight: 700; }
+    .bal-resumen.joaco-debe { background: #fff5f5; color: #c53030; }
+    .bal-resumen.agus-debe  { background: #ebf8ff; color: #2b6cb0; }
+    .bal-resumen.al-dia     { background: #f0fff4; color: #276749; }
   </style>
 </head>
 <body>
@@ -433,6 +592,7 @@
     <button class="tab active" data-idx="0">Registrar</button>
     <button class="tab"        data-idx="1">Gráfico</button>
     <button class="tab"        data-idx="2">Historial</button>
+    <button class="tab"        data-idx="3">Balance</button>
   </nav>
 
   <!-- Slides -->
@@ -493,6 +653,23 @@
 
       <!-- Slide 1: Gráfico -->
       <div class="slide slide-chart">
+        <div class="total-card">
+          <div class="total-header">
+            <h2>Total del mes</h2>
+            <select id="totalMesSelect" class="periodo-select"></select>
+          </div>
+          <div class="total-monto" id="totalMonto">—</div>
+          <div class="total-breakdown">
+            <div class="total-persona">
+              <span class="total-persona-nombre">Joaco</span>
+              <span class="total-persona-monto" id="totalJoaco">—</span>
+            </div>
+            <div class="total-persona">
+              <span class="total-persona-nombre">Agus</span>
+              <span class="total-persona-monto" id="totalAgus">—</span>
+            </div>
+          </div>
+        </div>
         <div class="chart-card">
           <div class="chart-header">
             <h2>Gastos por categoría</h2>
@@ -517,6 +694,32 @@
           <div class="tabla-wrap" id="tablaWrap">
             <p class="estado-cargando">Cargando…</p>
           </div>
+        </div>
+      </div>
+
+      <!-- Slide 3: Balance -->
+      <div class="slide">
+        <div class="balance-card">
+          <div class="balance-header">
+            <h2>Balance del mes</h2>
+            <select id="balanceMesSelect" class="periodo-select"></select>
+          </div>
+          <p class="bal-total-label">Total gastado: <strong id="balTotalMes">—</strong></p>
+          <div class="bal-personas">
+            <div class="bal-persona">
+              <div class="bal-persona-nombre">Joaco <span class="bal-porcentaje">70%</span></div>
+              <div class="bal-row"><span>Pagó</span><span id="balJoacoPago">—</span></div>
+              <div class="bal-row"><span>Debería pagar</span><span id="balJoacoDeberia">—</span></div>
+              <div class="bal-row"><span>Diferencia</span><span id="balJoacoDif" class="bal-dif">—</span></div>
+            </div>
+            <div class="bal-persona">
+              <div class="bal-persona-nombre">Agus <span class="bal-porcentaje">30%</span></div>
+              <div class="bal-row"><span>Pagó</span><span id="balAgusPago">—</span></div>
+              <div class="bal-row"><span>Debería pagar</span><span id="balAgusDeberia">—</span></div>
+              <div class="bal-row"><span>Diferencia</span><span id="balAgusDif" class="bal-dif">—</span></div>
+            </div>
+          </div>
+          <div id="balResumen" class="bal-resumen"></div>
         </div>
       </div>
 
@@ -587,8 +790,8 @@
   let currentIdx = 0;
 
   function goTo(idx) {
-    currentIdx = Math.max(0, Math.min(2, idx));
-    track.style.transform = `translateX(${-currentIdx * (100 / 3)}%)`;
+    currentIdx = Math.max(0, Math.min(3, idx));
+    track.style.transform = `translateX(${-currentIdx * (100 / 4)}%)`;
     tabs.forEach((t, i) => t.classList.toggle("active", i === currentIdx));
     if (currentIdx === 1 && rowsGlobal.length) {
       requestAnimationFrame(() => renderChart(rowsGlobal, document.getElementById("periodoSelect").value));
@@ -626,7 +829,9 @@
   });
 
   // ── Gráfico (canvas puro) ────────────────────────────────
-  const CATEGORIAS = ["Alimentación","Transporte","Salud","Educación","Servicios","Ropa","Entretenimiento","Hogar","Otro"];
+  const CATEGORIAS   = ["Alimentación","Transporte","Salud","Educación","Servicios","Ropa","Entretenimiento","Hogar","Otro"];
+  const MESES_CORTOS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+  const MESES_LARGOS = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
   const COLORES_CAT = {
     "Alimentación":    "#4c6ef5",
     "Transporte":      "#f59f00",
@@ -660,9 +865,8 @@
       const fecha = String(row["Fecha"] ?? "").substring(0, 10);
       if (fecha.length < 7) return;
       const [y, m, d] = fecha.split("-");
-      const meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
       const sortKey      = periodo === "dia" ? fecha : `${y}-${m}`;
-      const displayLabel = periodo === "dia" ? `${d}/${m}` : `${meses[+m - 1]} ${y}`;
+      const displayLabel = periodo === "dia" ? `${d}/${m}` : `${MESES_CORTOS[+m - 1]} ${y}`;
       const cat   = String(row["Categoría"] || "Otro");
       const monto = parseFloat(row["Monto Total"]) || 0;
       if (!agrupado[sortKey]) agrupado[sortKey] = { displayLabel, cats: {} };
@@ -775,6 +979,91 @@
     return `${d}/${m}/${y}`;
   }
 
+  // ── Helpers mes ──────────────────────────────────────────
+  function getMesesDisponibles(rows) {
+    const set = new Set();
+    rows.forEach(row => {
+      const s = String(row["Fecha"] ?? "").substring(0, 7);
+      if (s.length === 7) set.add(s);
+    });
+    return [...set].sort().reverse();
+  }
+
+  function poblarSelectorMes(selectId, meses) {
+    const sel = document.getElementById(selectId);
+    const prev = sel.value;
+    sel.innerHTML = "";
+    meses.forEach(ym => {
+      const [y, m] = ym.split("-");
+      const opt = document.createElement("option");
+      opt.value = ym;
+      opt.textContent = `${MESES_LARGOS[+m - 1]} ${y}`;
+      sel.appendChild(opt);
+    });
+    if (meses.includes(prev)) sel.value = prev;
+  }
+
+  function rowsDelMes(rows, ym) {
+    return rows.filter(row => String(row["Fecha"] ?? "").startsWith(ym));
+  }
+
+  // ── Total del mes ─────────────────────────────────────────
+  function renderTotal(rows) {
+    const ym = document.getElementById("totalMesSelect").value;
+    const filtradas = rowsDelMes(rows, ym);
+    const total = filtradas.reduce((s, r) => s + (parseFloat(r["Monto Total"]) || 0), 0);
+    const pagJoaco = filtradas.filter(r => r["Pagado por"] === "Joaco")
+                              .reduce((s, r) => s + (parseFloat(r["Monto Total"]) || 0), 0);
+    const pagAgus  = filtradas.filter(r => r["Pagado por"] === "Agus")
+                              .reduce((s, r) => s + (parseFloat(r["Monto Total"]) || 0), 0);
+    document.getElementById("totalMonto").textContent = fmtMonto(total);
+    document.getElementById("totalJoaco").textContent = fmtMonto(pagJoaco);
+    document.getElementById("totalAgus").textContent  = fmtMonto(pagAgus);
+  }
+
+  // ── Balance ───────────────────────────────────────────────
+  function renderBalance(rows) {
+    const ym = document.getElementById("balanceMesSelect").value;
+    const filtradas = rowsDelMes(rows, ym);
+    const total = filtradas.reduce((s, r) => s + (parseFloat(r["Monto Total"]) || 0), 0);
+    const pagJoaco = filtradas.filter(r => r["Pagado por"] === "Joaco")
+                              .reduce((s, r) => s + (parseFloat(r["Monto Total"]) || 0), 0);
+    const pagAgus  = filtradas.filter(r => r["Pagado por"] === "Agus")
+                              .reduce((s, r) => s + (parseFloat(r["Monto Total"]) || 0), 0);
+    const debJoaco = total * 0.70;
+    const debAgus  = total * 0.30;
+    const difJoaco = pagJoaco - debJoaco;
+
+    document.getElementById("balTotalMes").textContent    = fmtMonto(total);
+    document.getElementById("balJoacoPago").textContent   = fmtMonto(pagJoaco);
+    document.getElementById("balJoacoDeberia").textContent = fmtMonto(debJoaco);
+    document.getElementById("balAgusPago").textContent    = fmtMonto(pagAgus);
+    document.getElementById("balAgusDeberia").textContent  = fmtMonto(debAgus);
+
+    const difJEl = document.getElementById("balJoacoDif");
+    difJEl.textContent = (difJoaco >= 0 ? "+" : "") + fmtMonto(difJoaco);
+    difJEl.className   = "bal-dif " + (difJoaco >= 0 ? "favor" : "contra");
+
+    const difAEl = document.getElementById("balAgusDif");
+    difAEl.textContent = (difJoaco <= 0 ? "+" : "") + fmtMonto(-difJoaco);
+    difAEl.className   = "bal-dif " + (difJoaco <= 0 ? "favor" : "contra");
+
+    const res = document.getElementById("balResumen");
+    if (total === 0) {
+      res.textContent = "Sin gastos en este período.";
+      res.className   = "bal-resumen";
+    } else if (Math.abs(difJoaco) < 0.01) {
+      res.textContent = "¡Están al día!";
+      res.className   = "bal-resumen al-dia";
+    } else if (difJoaco < 0) {
+      res.innerHTML = `Joaco le debe <strong>${fmtMonto(Math.abs(difJoaco))}</strong> a Agus`;
+      res.className = "bal-resumen joaco-debe";
+    } else {
+      res.innerHTML = `Agus le debe <strong>${fmtMonto(difJoaco)}</strong> a Joaco`;
+      res.className = "bal-resumen agus-debe";
+    }
+  }
+
   // ── Historial ─────────────────────────────────────────────
   async function cargarHistorial() {
     const wrap = document.getElementById("tablaWrap");
@@ -783,8 +1072,13 @@
       const res  = await fetch(APPS_SCRIPT_URL);
       const rows = await res.json();
       rowsGlobal = rows;
+      const meses = getMesesDisponibles(rows);
+      poblarSelectorMes("totalMesSelect",   meses);
+      poblarSelectorMes("balanceMesSelect", meses);
       if (currentIdx === 1) renderChart(rows, document.getElementById("periodoSelect").value);
       renderTabla(rows);
+      renderTotal(rows);
+      renderBalance(rows);
     } catch (err) {
       wrap.innerHTML = '<p class="estado-error">No se pudo cargar el historial.</p>';
     }
@@ -798,18 +1092,17 @@
     }
 
     const cols = [
-      { key: "Fecha",              fmt: fmtFecha, num: false },
-      { key: "Descripción",        fmt: v => v,   num: false },
-      { key: "Categoría",          fmt: v => v,   num: false },
-      { key: "Monto Total",        fmt: fmtMonto, num: true  },
-      { key: "Moneda",             fmt: v => v,   num: false },
-      { key: "Pagado por",         fmt: v => v,   num: false },
-      { key: "Mi parte",           fmt: fmtMonto, num: true  },
-      { key: "Parte otra persona", fmt: fmtMonto, num: true  },
+      { key: "Fecha",              label: "Fecha",          fmt: fmtFecha, num: false },
+      { key: "Descripción",        label: "Descripción",    fmt: v => v,   num: false },
+      { key: "Categoría",          label: "Categoría",      fmt: v => v,   num: false },
+      { key: "Monto Total",        label: "Monto Total",    fmt: fmtMonto, num: true  },
+      { key: "Pagado por",         label: "Pagado por",     fmt: v => v,   num: false },
+      { key: "Mi parte",           label: "Mi parte",       fmt: fmtMonto, num: true  },
+      { key: "Parte otra persona", label: "Otra persona",   fmt: fmtMonto, num: true  },
     ];
 
     let html = "<table><thead><tr>";
-    cols.forEach(c => { html += `<th>${c.key}</th>`; });
+    cols.forEach(c => { html += `<th>${c.label}</th>`; });
     html += "</tr></thead><tbody>";
     rows.forEach((row, i) => {
       html += `<tr data-idx="${i}">`;
@@ -958,6 +1251,8 @@
     }
   });
 
+  document.getElementById("totalMesSelect").addEventListener("change",   () => renderTotal(rowsGlobal));
+  document.getElementById("balanceMesSelect").addEventListener("change", () => renderBalance(rowsGlobal));
   document.getElementById("btnRecargar").addEventListener("click", cargarHistorial);
 
   cargarHistorial();

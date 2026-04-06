@@ -39,6 +39,11 @@ jobs:
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
           plugins: 'code-review@claude-code-plugins'
           prompt: '/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
-          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
-          # or https://code.claude.com/docs/en/cli-reference for available options
+          custom_instructions: |
+            This project has two files: index.html (entire frontend — HTML, CSS and JS inline, no framework, no build step)
+            and apps-script/Code.gs (Google Apps Script backend that writes to a Google Spreadsheet).
+            There are no dependencies, no package.json, and no tests.
+            Focus the review on: correctness of the Apps Script row operations (especially _row index usage),
+            mobile UX (swipe, touch events, modal behavior), canvas chart rendering logic,
+            and keeping the category list in sync between index.html and Code.gs.
 

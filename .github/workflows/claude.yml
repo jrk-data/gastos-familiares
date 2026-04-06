@@ -36,15 +36,32 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
-          # This is an optional setting that allows Claude to read CI results on PRs
           additional_permissions: |
             actions: read
 
-          # Optional: Give a custom prompt to Claude. If this is not specified, Claude will perform the instructions specified in the comment that tagged it.
-          # prompt: 'Update the pull request description to include a summary of changes.'
+          custom_instructions: |
+            This is a family expense tracker with no build step and no local backend.
+            The frontend is a single file: index.html (HTML + CSS + JS all inline).
+            The live app is deployed at https://jrk-data.github.io/gastos-familiares/ (GitHub Pages, auto-deploys from master).
+            The backend is Google Apps Script (cloud-hosted) — it cannot be run locally.
+            All data is stored in a Google Spreadsheet; you cannot query it from this environment.
+            Use the mcp__playwright__ tools to open a browser and interact with the live app at the URL above.
+            When editing code, only modify index.html (frontend) or apps-script/Code.gs (backend logic).
+            Note: after pushing changes, GitHub Pages may take 1-2 minutes to reflect them.
 
-          # Optional: Add claude_args to customize behavior and configuration
-          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
-          # or https://code.claude.com/docs/en/cli-reference for available options
-          # claude_args: '--allowed-tools Bash(gh pr:*)'
+          mcp_config: |
+            {
+              "mcpServers": {
+                "playwright": {
+                  "command": "npx",
+                  "args": [
+                    "@playwright/mcp@latest",
+                    "--allowed-origins",
+                    "jrk-data.github.io"
+                  ]
+                }
+              }
+            }
+
+          allowed_tools: "Bash(git:*),Bash(gh:*),mcp__playwright__browser_navigate,mcp__playwright__browser_snapshot,mcp__playwright__browser_click,mcp__playwright__browser_type,mcp__playwright__browser_take_screenshot,mcp__playwright__browser_select_option,mcp__playwright__browser_wait_for,mcp__playwright__browser_close,mcp__playwright__browser_resize,mcp__playwright__browser_scroll,mcp__playwright__browser_evaluate"
 
