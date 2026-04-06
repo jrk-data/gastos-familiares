@@ -1138,6 +1138,8 @@
     btnSave.disabled   = false;
     btnSave.textContent = "Guardar";
     resetDeleteBtn();
+    btnSave.disabled    = false;
+    btnSave.textContent = "Guardar";
     overlay.classList.add("open");
   }
 
@@ -1210,9 +1212,9 @@
       closeModal();
       setTimeout(cargarHistorial, 800);
     } catch {
-      btnSave.disabled   = false;
       btnDelete.disabled = false;
     } finally {
+      btnSave.disabled    = false;
       btnSave.textContent = "Guardar";
     }
   });
