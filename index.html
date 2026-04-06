@@ -1037,7 +1037,7 @@
   // ── Total del mes ─────────────────────────────────────────
   function renderTotal(rows) {
     const ym = document.getElementById("totalMesSelect").value;
-    const filtradas = rowsDelMes(rows, ym);
+    const filtradas = rowsDelMes(rows, ym).filter(r => r["Categoría"] !== "Pago de Saldo");
     const total = filtradas.reduce((s, r) => s + (parseFloat(r["Monto Total"]) || 0), 0);
     const pagJoaco = filtradas.filter(r => r["Pagado por"] === "Joaco")
                               .reduce((s, r) => s + (parseFloat(r["Monto Total"]) || 0), 0);
