@@ -689,6 +689,7 @@
         <div class="historial-card">
           <div class="historial-header">
             <h2>Historial de gastos</h2>
+            <select id="historialMesSelect" class="periodo-select"></select>
             <button class="btn-reload" id="btnRecargar">Actualizar</button>
           </div>
           <div class="tabla-wrap" id="tablaWrap">
@@ -992,6 +993,7 @@
   function poblarSelectorMes(selectId, meses) {
     const sel = document.getElementById(selectId);
     const prev = sel.value;
+    const currentYM = new Date().toISOString().substring(0, 7);
     sel.innerHTML = "";
     meses.forEach(ym => {
       const [y, m] = ym.split("-");
@@ -1001,6 +1003,7 @@
       sel.appendChild(opt);
     });
     if (meses.includes(prev)) sel.value = prev;
+    else if (meses.includes(currentYM)) sel.value = currentYM;
   }
 
   function rowsDelMes(rows, ym) {
@@ -1065,6 +1068,11 @@
   }
 
   // ── Historial ─────────────────────────────────────────────
+  function renderHistorialFiltrado() {
+    const ym = document.getElementById("historialMesSelect").value;
+    renderTabla(ym ? rowsDelMes(rowsGlobal, ym) : rowsGlobal);
+  }
+
   async function cargarHistorial() {
     const wrap = document.getElementById("tablaWrap");
     wrap.innerHTML = '<p class="estado-cargando">Cargando…</p>';
@@ -1073,10 +1081,11 @@
       const rows = await res.json();
       rowsGlobal = rows;
       const meses = getMesesDisponibles(rows);
-      poblarSelectorMes("totalMesSelect",   meses);
-      poblarSelectorMes("balanceMesSelect", meses);
+      poblarSelectorMes("totalMesSelect",     meses);
+      poblarSelectorMes("balanceMesSelect",   meses);
+      poblarSelectorMes("historialMesSelect", meses);
       if (currentIdx === 1) renderChart(rows, document.getElementById("periodoSelect").value);
-      renderTabla(rows);
+      renderHistorialFiltrado();
       renderTotal(rows);
       renderBalance(rows);
     } catch (err) {
@@ -1255,8 +1264,9 @@
     }
   });
 
-  document.getElementById("totalMesSelect").addEventListener("change",   () => renderTotal(rowsGlobal));
-  document.getElementById("balanceMesSelect").addEventListener("change", () => renderBalance(rowsGlobal));
+  document.getElementById("totalMesSelect").addEventListener("change",     () => renderTotal(rowsGlobal));
+  document.getElementById("balanceMesSelect").addEventListener("change",   () => renderBalance(rowsGlobal));
+  document.getElementById("historialMesSelect").addEventListener("change", renderHistorialFiltrado);
   document.getElementById("btnRecargar").addEventListener("click", cargarHistorial);
 
   cargarHistorial();
