@@ -1135,6 +1135,8 @@
     document.getElementById("editMonto").value       = row["Monto Total"] ?? "";
     document.getElementById("editQuien").value       = row["Pagado por"]  ?? "";
 
+    btnSave.disabled   = false;
+    btnSave.textContent = "Guardar";
     resetDeleteBtn();
     overlay.classList.add("open");
   }
