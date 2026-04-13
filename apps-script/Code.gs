@@ -25,8 +25,9 @@ function doPost(e) {
     // ── Editar fila ────────────────────────────────────────
     if (data.action === 'update') {
       const montoTotal = parseFloat(data.monto) || 0;
-      const parteJoaco = parseFloat((montoTotal * CONFIG.PORCENTAJE_JOACO).toFixed(2));
-      const parteAgus  = parseFloat((montoTotal * CONFIG.PORCENTAJE_AGUS).toFixed(2));
+      const esPagoDeSaldo = data.categoria === 'Pago de Saldo';
+      const parteJoaco = esPagoDeSaldo ? '' : parseFloat((montoTotal * CONFIG.PORCENTAJE_JOACO).toFixed(2));
+      const parteAgus  = esPagoDeSaldo ? '' : parseFloat((montoTotal * CONFIG.PORCENTAJE_AGUS).toFixed(2));
       hoja.getRange(data._row, 1, 1, 8).setValues([[
         data.fecha,
         data.descripcion,
@@ -42,8 +43,9 @@ function doPost(e) {
 
     // ── Crear fila (comportamiento original) ───────────────
     const montoTotal = parseFloat(data.monto) || 0;
-    const parteJoaco = parseFloat((montoTotal * CONFIG.PORCENTAJE_JOACO).toFixed(2));
-    const parteAgus  = parseFloat((montoTotal * CONFIG.PORCENTAJE_AGUS).toFixed(2));
+    const esPagoDeSaldo = data.categoria === 'Pago de Saldo';
+    const parteJoaco = esPagoDeSaldo ? '' : parseFloat((montoTotal * CONFIG.PORCENTAJE_JOACO).toFixed(2));
+    const parteAgus  = esPagoDeSaldo ? '' : parseFloat((montoTotal * CONFIG.PORCENTAJE_AGUS).toFixed(2));
 
     let hojaDest = hoja;
     if (!hojaDest) {

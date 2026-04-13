@@ -1067,14 +1067,17 @@
     const debJoaco = total * 0.70;
     const debAgus  = total * 0.30;
 
+    // Conciliaciones: ajustan el "Pagó" de cada persona para reflejar los pagos de saldo
     const offsetJoaco = sum(conciliadas, r => r["Pagado por"] === "Joaco")
                       - sum(conciliadas, r => r["Pagado por"] === "Agus");
-    const difJoaco = (pagJoaco - debJoaco) + offsetJoaco;
+    const pagJoacoDisplay = pagJoaco + offsetJoaco;
+    const pagAgusDisplay  = pagAgus  - offsetJoaco;
+    const difJoaco = pagJoacoDisplay - debJoaco;
 
     document.getElementById("balTotalMes").textContent     = fmtMonto(total);
-    document.getElementById("balJoacoPago").textContent    = fmtMonto(pagJoaco);
+    document.getElementById("balJoacoPago").textContent    = fmtMonto(pagJoacoDisplay);
     document.getElementById("balJoacoDeberia").textContent = fmtMonto(debJoaco);
-    document.getElementById("balAgusPago").textContent     = fmtMonto(pagAgus);
+    document.getElementById("balAgusPago").textContent     = fmtMonto(pagAgusDisplay);
     document.getElementById("balAgusDeberia").textContent  = fmtMonto(debAgus);
 
     const difJEl = document.getElementById("balJoacoDif");
@@ -1190,8 +1193,8 @@
       { key: "Categoría",          label: "Categoría",      fmt: v => v,   num: false },
       { key: "Monto Total",        label: "Monto Total",    fmt: fmtMonto, num: true  },
       { key: "Pagado por",         label: "Pagado por",     fmt: v => v,   num: false },
-      { key: "Mi parte",           label: "Mi parte",       fmt: fmtMonto, num: true  },
-      { key: "Parte otra persona", label: "Otra persona",   fmt: fmtMonto, num: true  },
+      { key: "Mi parte",           label: "Joaco",       fmt: fmtMonto, num: true  },
+      { key: "Parte otra persona", label: "Agus",        fmt: fmtMonto, num: true  },
     ];
 
     let html = "<table><thead><tr>";
@@ -1202,7 +1205,9 @@
       html += `<tr data-idx="${i}"${esConciliacion ? ' class="conciliacion"' : ""}>`;
       cols.forEach(c => {
         const cls = c.num ? ' class="monto-num"' : "";
-        html += `<td${cls}>${c.fmt(row[c.key] ?? "")}</td>`;
+        const esParte = c.key === "Mi parte" || c.key === "Parte otra persona";
+        const val = (esConciliacion && esParte) ? "—" : c.fmt(row[c.key] ?? "");
+        html += `<td${cls}>${val}</td>`;
       });
       html += "</tr>";
     });
