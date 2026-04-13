@@ -604,6 +604,34 @@
     .btn-conciliar:disabled { opacity: 0.5; cursor: not-allowed; }
 
     tbody tr.conciliacion td { color: #a0aec0; font-style: italic; }
+
+    /* ── Mobile fixes ── */
+    @media (max-width: 480px) {
+      .slide { padding: 1rem; }
+
+      .balance-card { padding: 1rem; }
+
+      .bal-personas { gap: 0.625rem; }
+
+      .bal-persona { padding: 0.75rem; }
+
+      .bal-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.1rem;
+        padding: 0.3rem 0;
+      }
+
+      .bal-row span:first-child {
+        font-size: 0.75rem;
+      }
+
+      .bal-row span:last-child {
+        font-size: 0.8125rem;
+      }
+
+      .btn-conciliar { font-size: 0.875rem; }
+    }
   </style>
 </head>
 <body>
