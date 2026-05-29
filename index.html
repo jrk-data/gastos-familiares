@@ -1331,17 +1331,30 @@
 
   function openModal(row) {
     editingRow = row;
+    const esConciliacion = row["Categoría"] === "Pago de Saldo";
+
     document.getElementById("editFecha").value       = String(row["Fecha"] ?? "").substring(0, 10);
     document.getElementById("editDescripcion").value = row["Descripción"] ?? "";
-    document.getElementById("editCategoria").value   = row["Categoría"]   ?? "";
     document.getElementById("editMonto").value       = row["Monto Total"] ?? "";
     document.getElementById("editQuien").value       = row["Pagado por"]  ?? "";
 
-    btnSave.disabled   = false;
-    btnSave.textContent = "Guardar";
-    resetDeleteBtn();
+    if (!esConciliacion) {
+      document.getElementById("editCategoria").value = row["Categoría"] ?? "";
+    }
+
+    // Conciliaciones: solo se puede eliminar, no editar
+    const esEditable = !esConciliacion;
+    document.querySelectorAll("#editForm input, #editForm select").forEach(f => {
+      f.disabled = !esEditable;
+    });
+    btnSave.style.display   = esEditable ? "" : "none";
+    btnDelete.style.display = "";
+    document.querySelector(".modal-header h3").textContent =
+      esConciliacion ? "Eliminar conciliación" : "Editar gasto";
+
     btnSave.disabled    = false;
     btnSave.textContent = "Guardar";
+    resetDeleteBtn();
     overlay.classList.add("open");
   }
 
@@ -1349,6 +1362,12 @@
     overlay.classList.remove("open");
     editingRow = null;
     resetDeleteBtn();
+    // Restaurar modal al estado de edición normal
+    document.querySelectorAll("#editForm input, #editForm select").forEach(f => {
+      f.disabled = false;
+    });
+    btnSave.style.display = "";
+    document.querySelector(".modal-header h3").textContent = "Editar gasto";
   }
 
   function resetDeleteBtn() {
