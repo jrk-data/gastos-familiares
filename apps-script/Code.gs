@@ -5,7 +5,23 @@ const CONFIG = {
   SPREADSHEET_ID: '1p5G1iq1E9LYki20pwfEI2ubaJW6ghAHAbBi_eG4ePCk',
   PORCENTAJE_JOACO: 0.70,
   PORCENTAJE_AGUS:  0.30,
+  // Token de autenticación — debe coincidir con API_TOKEN en index.html.
+  // Durante la transición acepta requests sin token (backward compat con la v1).
+  // Una vez migrado por completo: cambiar isAuthorized a (token === CONFIG.TOKEN).
+  TOKEN: '63a448516f04f12276ae0357a89fe37f60a668fd0062d0f88057240fae5420e4',
 };
+
+function isAuthorized(token) {
+  // Sin token → permitido (v1 sigue funcionando durante la migración).
+  // Token presente pero incorrecto → bloqueado.
+  return !token || token === CONFIG.TOKEN;
+}
+
+function unauthorized() {
+  return ContentService
+    .createTextOutput(JSON.stringify({ ok: false, error: 'Unauthorized' }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
 
 // ============================================================
 //  RECIBIR ACCIÓN DESDE EL FORMULARIO WEB
@@ -13,6 +29,7 @@ const CONFIG = {
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
+    if (!isAuthorized(data.token)) return unauthorized();
     const ss   = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
     const hoja = ss.getSheetByName('Historial');
 
@@ -84,8 +101,9 @@ function ok() {
 // ============================================================
 //  DEVOLVER GASTOS AL FORMULARIO WEB
 // ============================================================
-function doGet() {
+function doGet(e) {
   try {
+    if (!isAuthorized(e && e.parameter && e.parameter.token)) return unauthorized();
     const ss   = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
     const hoja = ss.getSheetByName('Historial');
 
