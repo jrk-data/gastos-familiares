@@ -895,7 +895,8 @@
 <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 <script>
-  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwgH0t0cbO4juI-YBh1v8FvX24pM9X4KY_v2SOUvTRC0hVHoh4rG433wiTRNMysP4hQGw/exec";
+  const API_URL   = "/api/gastos";
+  const API_TOKEN = "63a448516f04f12276ae0357a89fe37f60a668fd0062d0f88057240fae5420e4";
 
   document.getElementById("fecha").valueAsDate = new Date();
 
@@ -1244,11 +1245,10 @@
     const fecha   = `${ym}-${String(lastDay).padStart(2, "0")}`;
     const desc    = `Conciliación ${MESES_LARGOS[+m - 1]} ${y}`;
 
-    await fetch(APPS_SCRIPT_URL, {
+    await fetch(API_URL, {
       method:  "POST",
-      mode:    "no-cors",
-      headers: { "Content-Type": "text/plain" },
-      body:    JSON.stringify({ fecha, descripcion: desc, categoria: "Pago de Saldo", monto, quien: debtor }),
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ fecha, descripcion: desc, categoria: "Pago de Saldo", monto, quien: debtor, token: API_TOKEN }),
     });
 
     setTimeout(cargarHistorial, 800);
@@ -1264,7 +1264,7 @@
     const wrap = document.getElementById("tablaWrap");
     wrap.innerHTML = '<p class="estado-cargando">Cargando…</p>';
     try {
-      const res  = await fetch(APPS_SCRIPT_URL);
+      const res  = await fetch(`${API_URL}?token=${API_TOKEN}`);
       const rows = await res.json();
       rowsGlobal = rows;
       const meses = getMesesDisponibles(rows);
@@ -1300,9 +1300,12 @@
     let html = "<table><thead><tr>";
     cols.forEach(c => { html += `<th>${c.label}</th>`; });
     html += "</tr></thead><tbody>";
-    rows.forEach((row, i) => {
+    const rowMap = {};
+    rows.forEach(row => { rowMap[row._row] = row; });
+
+    rows.forEach(row => {
       const esConciliacion = row["Categoría"] === "Pago de Saldo";
-      html += `<tr data-idx="${i}"${esConciliacion ? ' class="conciliacion"' : ""}>`;
+      html += `<tr data-row="${row._row}"${esConciliacion ? ' class="conciliacion"' : ""}>`;
       cols.forEach(c => {
         const cls = c.num ? ' class="monto-num"' : "";
         const esParte = c.key === "Mi parte" || c.key === "Parte otra persona";
@@ -1315,7 +1318,7 @@
     wrap.innerHTML = html;
 
     wrap.querySelectorAll("tbody tr").forEach(tr => {
-      tr.addEventListener("click", () => openModal(rowsGlobal[+tr.dataset.idx]));
+      tr.addEventListener("click", () => openModal(rowMap[+tr.dataset.row]));
     });
   }
 
@@ -1328,17 +1331,31 @@
 
   function openModal(row) {
     editingRow = row;
+    const esConciliacion = row["Categoría"] === "Pago de Saldo";
+
     document.getElementById("editFecha").value       = String(row["Fecha"] ?? "").substring(0, 10);
     document.getElementById("editDescripcion").value = row["Descripción"] ?? "";
-    document.getElementById("editCategoria").value   = row["Categoría"]   ?? "";
     document.getElementById("editMonto").value       = row["Monto Total"] ?? "";
     document.getElementById("editQuien").value       = row["Pagado por"]  ?? "";
 
-    btnSave.disabled   = false;
-    btnSave.textContent = "Guardar";
-    resetDeleteBtn();
+    if (!esConciliacion) {
+      document.getElementById("editCategoria").value = row["Categoría"] ?? "";
+    }
+
+    // Conciliaciones: solo se puede eliminar, no editar
+    const esEditable = !esConciliacion;
+    document.querySelectorAll("#editForm input, #editForm select").forEach(f => {
+      f.disabled = !esEditable;
+    });
+    btnSave.style.display   = esEditable ? "" : "none";
+    btnDelete.style.display = "";
+    document.querySelector(".modal-header h3").textContent =
+      esConciliacion ? "Eliminar conciliación" : "Editar gasto";
+
     btnSave.disabled    = false;
     btnSave.textContent = "Guardar";
+    btnDelete.disabled  = false;
+    resetDeleteBtn();
     overlay.classList.add("open");
   }
 
@@ -1346,6 +1363,13 @@
     overlay.classList.remove("open");
     editingRow = null;
     resetDeleteBtn();
+    btnDelete.disabled = false;
+    // Restaurar modal al estado de edición normal
+    document.querySelectorAll("#editForm input, #editForm select").forEach(f => {
+      f.disabled = false;
+    });
+    btnSave.style.display = "";
+    document.querySelector(".modal-header h3").textContent = "Editar gasto";
   }
 
   function resetDeleteBtn() {
@@ -1369,17 +1393,18 @@
     btnDelete.disabled = true;
     btnSave.disabled   = true;
     try {
-      await fetch(APPS_SCRIPT_URL, {
+      const res = await fetch(API_URL, {
         method:  "POST",
-        mode:    "no-cors",
-        headers: { "Content-Type": "text/plain" },
-        body:    JSON.stringify({ action: "delete", _row: editingRow._row }),
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ action: "delete", _row: editingRow._row, token: API_TOKEN }),
       });
+      if (!res.ok) throw new Error(`Error ${res.status}`);
       closeModal();
       setTimeout(cargarHistorial, 800);
-    } catch {
+    } catch (err) {
       btnDelete.disabled = false;
       btnSave.disabled   = false;
+      alert(`No se pudo eliminar: ${err.message}`);
     }
   });
 
@@ -1394,10 +1419,9 @@
     btnDelete.disabled = true;
     btnSave.textContent = "Guardando…";
     try {
-      await fetch(APPS_SCRIPT_URL, {
+      const res = await fetch(API_URL, {
         method:  "POST",
-        mode:    "no-cors",
-        headers: { "Content-Type": "text/plain" },
+        headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({
           action:      "update",
           _row:        editingRow._row,
@@ -1406,12 +1430,15 @@
           categoria:   document.getElementById("editCategoria").value,
           monto:       parseFloat(document.getElementById("editMonto").value),
           quien:       document.getElementById("editQuien").value,
+          token:       API_TOKEN,
         }),
       });
+      if (!res.ok) throw new Error(`Error ${res.status}`);
       closeModal();
       setTimeout(cargarHistorial, 800);
-    } catch {
+    } catch (err) {
       btnDelete.disabled = false;
+      alert(`No se pudo guardar: ${err.message}`);
     } finally {
       btnSave.disabled    = false;
       btnSave.textContent = "Guardar";
@@ -1431,14 +1458,14 @@
       categoria:   document.getElementById("categoria").value,
       monto:       parseFloat(document.getElementById("monto").value),
       quien:       document.getElementById("quien").value,
+      token:       API_TOKEN,
     };
     btn.disabled = true; btn.textContent = "Enviando…";
     msg.className = ""; msg.style.display = "none";
     try {
-      await fetch(APPS_SCRIPT_URL, {
+      await fetch(API_URL, {
         method:  "POST",
-        mode:    "no-cors",
-        headers: { "Content-Type": "text/plain" },
+        headers: { "Content-Type": "application/json" },
         body:    JSON.stringify(data),
       });
       msg.textContent = "Gasto registrado correctamente.";
