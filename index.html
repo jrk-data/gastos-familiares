@@ -1300,9 +1300,12 @@
     let html = "<table><thead><tr>";
     cols.forEach(c => { html += `<th>${c.label}</th>`; });
     html += "</tr></thead><tbody>";
-    rows.forEach((row, i) => {
+    const rowMap = {};
+    rows.forEach(row => { rowMap[row._row] = row; });
+
+    rows.forEach(row => {
       const esConciliacion = row["Categoría"] === "Pago de Saldo";
-      html += `<tr data-idx="${i}"${esConciliacion ? ' class="conciliacion"' : ""}>`;
+      html += `<tr data-row="${row._row}"${esConciliacion ? ' class="conciliacion"' : ""}>`;
       cols.forEach(c => {
         const cls = c.num ? ' class="monto-num"' : "";
         const esParte = c.key === "Mi parte" || c.key === "Parte otra persona";
@@ -1315,7 +1318,7 @@
     wrap.innerHTML = html;
 
     wrap.querySelectorAll("tbody tr").forEach(tr => {
-      tr.addEventListener("click", () => openModal(rowsGlobal[+tr.dataset.idx]));
+      tr.addEventListener("click", () => openModal(rowMap[+tr.dataset.row]));
     });
   }
 
@@ -1369,16 +1372,18 @@
     btnDelete.disabled = true;
     btnSave.disabled   = true;
     try {
-      await fetch(API_URL, {
+      const res = await fetch(API_URL, {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ action: "delete", _row: editingRow._row, token: API_TOKEN }),
       });
+      if (!res.ok) throw new Error(`Error ${res.status}`);
       closeModal();
       setTimeout(cargarHistorial, 800);
-    } catch {
+    } catch (err) {
       btnDelete.disabled = false;
       btnSave.disabled   = false;
+      alert(`No se pudo eliminar: ${err.message}`);
     }
   });
 
@@ -1393,7 +1398,7 @@
     btnDelete.disabled = true;
     btnSave.textContent = "Guardando…";
     try {
-      await fetch(API_URL, {
+      const res = await fetch(API_URL, {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({
@@ -1407,10 +1412,12 @@
           token:       API_TOKEN,
         }),
       });
+      if (!res.ok) throw new Error(`Error ${res.status}`);
       closeModal();
       setTimeout(cargarHistorial, 800);
-    } catch {
+    } catch (err) {
       btnDelete.disabled = false;
+      alert(`No se pudo guardar: ${err.message}`);
     } finally {
       btnSave.disabled    = false;
       btnSave.textContent = "Guardar";
