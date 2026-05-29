@@ -895,7 +895,7 @@
 <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 <script>
-  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwgH0t0cbO4juI-YBh1v8FvX24pM9X4KY_v2SOUvTRC0hVHoh4rG433wiTRNMysP4hQGw/exec";
+  const API_URL   = "/api/gastos";
   const API_TOKEN = "63a448516f04f12276ae0357a89fe37f60a668fd0062d0f88057240fae5420e4";
 
   document.getElementById("fecha").valueAsDate = new Date();
@@ -1245,10 +1245,9 @@
     const fecha   = `${ym}-${String(lastDay).padStart(2, "0")}`;
     const desc    = `Conciliación ${MESES_LARGOS[+m - 1]} ${y}`;
 
-    await fetch(APPS_SCRIPT_URL, {
+    await fetch(API_URL, {
       method:  "POST",
-      mode:    "no-cors",
-      headers: { "Content-Type": "text/plain" },
+      headers: { "Content-Type": "application/json" },
       body:    JSON.stringify({ fecha, descripcion: desc, categoria: "Pago de Saldo", monto, quien: debtor, token: API_TOKEN }),
     });
 
@@ -1265,7 +1264,7 @@
     const wrap = document.getElementById("tablaWrap");
     wrap.innerHTML = '<p class="estado-cargando">Cargando…</p>';
     try {
-      const res  = await fetch(`${APPS_SCRIPT_URL}?token=${API_TOKEN}`);
+      const res  = await fetch(`${API_URL}?token=${API_TOKEN}`);
       const rows = await res.json();
       rowsGlobal = rows;
       const meses = getMesesDisponibles(rows);
@@ -1370,10 +1369,9 @@
     btnDelete.disabled = true;
     btnSave.disabled   = true;
     try {
-      await fetch(APPS_SCRIPT_URL, {
+      await fetch(API_URL, {
         method:  "POST",
-        mode:    "no-cors",
-        headers: { "Content-Type": "text/plain" },
+        headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ action: "delete", _row: editingRow._row, token: API_TOKEN }),
       });
       closeModal();
@@ -1395,10 +1393,9 @@
     btnDelete.disabled = true;
     btnSave.textContent = "Guardando…";
     try {
-      await fetch(APPS_SCRIPT_URL, {
+      await fetch(API_URL, {
         method:  "POST",
-        mode:    "no-cors",
-        headers: { "Content-Type": "text/plain" },
+        headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({
           action:      "update",
           _row:        editingRow._row,
@@ -1438,10 +1435,9 @@
     btn.disabled = true; btn.textContent = "Enviando…";
     msg.className = ""; msg.style.display = "none";
     try {
-      await fetch(APPS_SCRIPT_URL, {
+      await fetch(API_URL, {
         method:  "POST",
-        mode:    "no-cors",
-        headers: { "Content-Type": "text/plain" },
+        headers: { "Content-Type": "application/json" },
         body:    JSON.stringify(data),
       });
       msg.textContent = "Gasto registrado correctamente.";
