@@ -1354,6 +1354,7 @@
 
     btnSave.disabled    = false;
     btnSave.textContent = "Guardar";
+    btnDelete.disabled  = false;
     resetDeleteBtn();
     overlay.classList.add("open");
   }
@@ -1362,6 +1363,7 @@
     overlay.classList.remove("open");
     editingRow = null;
     resetDeleteBtn();
+    btnDelete.disabled = false;
     // Restaurar modal al estado de edición normal
     document.querySelectorAll("#editForm input, #editForm select").forEach(f => {
       f.disabled = false;
