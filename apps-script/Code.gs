@@ -12,9 +12,7 @@ const CONFIG = {
 };
 
 function isAuthorized(token) {
-  // Sin token → permitido (v1 sigue funcionando durante la migración).
-  // Token presente pero incorrecto → bloqueado.
-  return !token || token === CONFIG.TOKEN;
+  return token === CONFIG.TOKEN;
 }
 
 function unauthorized() {
