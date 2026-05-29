@@ -75,7 +75,7 @@
       gap: 1.5rem;
     }
 
-    .slide-chart { overflow: hidden; }
+    .slide-chart { overflow-y: auto; }
 
     /* ── Formulario ── */
     .card {
@@ -224,6 +224,84 @@
       height: 100%;
       color: #718096;
       font-size: 0.875rem;
+    }
+
+    .btn-reset-zoom {
+      background: none;
+      border: 1.5px solid #4c6ef5;
+      border-radius: 6px;
+      padding: 0.3rem 0.7rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #4c6ef5;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-reset-zoom:hover { background: #ebf4ff; }
+
+    .day-detail {
+      border-top: 1.5px solid #e2e8f0;
+      padding-top: 0.875rem;
+      margin-top: 0.5rem;
+      flex-shrink: 0;
+    }
+
+    .day-detail-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+    }
+
+    .day-detail-title {
+      font-size: 0.875rem;
+      font-weight: 700;
+      color: #1a202c;
+    }
+
+    .day-detail-close {
+      background: none;
+      border: none;
+      color: #718096;
+      cursor: pointer;
+      font-size: 0.9rem;
+      line-height: 1;
+      padding: 0.15rem 0.3rem;
+    }
+    .day-detail-close:hover { color: #2d3748; }
+
+    .day-detail-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .day-detail-item {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.8125rem;
+      color: #4a5568;
+      background: #f7fafc;
+      border-radius: 6px;
+      padding: 0.25rem 0.625rem;
+    }
+
+    .day-detail-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .day-detail-total {
+      font-size: 0.875rem;
+      font-weight: 700;
+      color: #1a202c;
+      background: #edf2f7;
+      border-radius: 6px;
+      padding: 0.25rem 0.625rem;
     }
 
     /* ── Historial ── */
@@ -695,13 +773,23 @@
         <div class="chart-card">
           <div class="chart-header">
             <h2>Gastos por categoría</h2>
-            <select id="periodoSelect" class="periodo-select">
-              <option value="dia">Por día</option>
-              <option value="mes">Por mes</option>
-            </select>
+            <div style="display:flex;gap:0.5rem;align-items:center">
+              <button id="btnResetZoom" class="btn-reset-zoom" style="display:none">↺ Zoom</button>
+              <select id="periodoSelect" class="periodo-select">
+                <option value="dia">Por día</option>
+                <option value="mes">Por mes</option>
+              </select>
+            </div>
           </div>
           <div class="chart-wrap" id="chartWrap">
             <canvas id="gastosChart"></canvas>
+          </div>
+          <div id="dayDetail" class="day-detail" style="display:none">
+            <div class="day-detail-header">
+              <span class="day-detail-title" id="dayDetailTitle"></span>
+              <button class="day-detail-close" id="dayDetailClose">✕</button>
+            </div>
+            <div id="dayDetailList" class="day-detail-list"></div>
           </div>
         </div>
       </div>
@@ -803,6 +891,9 @@
   </div>
 
 </div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 <script>
   const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwgH0t0cbO4juI-YBh1v8FvX24pM9X4KY_v2SOUvTRC0hVHoh4rG433wiTRNMysP4hQGw/exec";
 
@@ -868,15 +959,9 @@
     "Otro":            "#868e96",
   };
 
-  let rowsGlobal = [];
-
-  function niceMax(val) {
-    if (val <= 0) return 1000;
-    const exp  = Math.pow(10, Math.floor(Math.log10(val)));
-    const f    = val / exp;
-    const nice = f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10;
-    return nice * exp;
-  }
+  let rowsGlobal   = [];
+  let chartInstance = null;
+  let chartAgrupado = {};
 
   function renderChart(rows, periodo) {
     rows = rows.filter(r => r["Categoría"] !== "Pago de Saldo");
@@ -884,8 +969,11 @@
     const wrap   = document.getElementById("chartWrap");
     const old    = wrap.querySelector(".chart-empty");
     if (old) old.remove();
+    closeDayDetail();
 
-    const agrupado = {};
+    if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+
+    chartAgrupado = {};
     rows.forEach(row => {
       const fecha = String(row["Fecha"] ?? "").substring(0, 10);
       if (fecha.length < 7) return;
@@ -894,13 +982,14 @@
       const displayLabel = periodo === "dia" ? `${d}/${m}` : `${MESES_CORTOS[+m - 1]} ${y}`;
       const cat   = String(row["Categoría"] || "Otro");
       const monto = parseFloat(row["Monto Total"]) || 0;
-      if (!agrupado[sortKey]) agrupado[sortKey] = { displayLabel, cats: {} };
-      agrupado[sortKey].cats[cat] = (agrupado[sortKey].cats[cat] || 0) + monto;
+      if (!chartAgrupado[sortKey]) chartAgrupado[sortKey] = { displayLabel, cats: {} };
+      chartAgrupado[sortKey].cats[cat] = (chartAgrupado[sortKey].cats[cat] || 0) + monto;
     });
 
-    const keys = Object.keys(agrupado).sort();
+    const keys = Object.keys(chartAgrupado).sort();
     if (!keys.length) {
       canvas.style.display = "none";
+      document.getElementById("btnResetZoom").style.display = "none";
       const el = document.createElement("p");
       el.className = "chart-empty";
       el.textContent = "Sin datos para mostrar.";
@@ -909,85 +998,96 @@
     }
 
     canvas.style.display = "";
-    const dpr = window.devicePixelRatio || 1;
-    const W   = wrap.clientWidth  || 600;
-    const H   = wrap.clientHeight || 320;
-    canvas.width        = W * dpr;
-    canvas.height       = H * dpr;
-    canvas.style.width  = W + "px";
-    canvas.style.height = H + "px";
 
-    const ctx = canvas.getContext("2d");
-    ctx.scale(dpr, dpr);
-    ctx.clearRect(0, 0, W, H);
+    const datasets = CATEGORIAS.map(cat => ({
+      label: cat,
+      data:  keys.map(k => chartAgrupado[k].cats[cat] || 0),
+      backgroundColor: COLORES_CAT[cat],
+    }));
 
-    const PAD_L = 72, PAD_R = 16, PAD_T = 16;
-    const LEG_H = Math.ceil(CATEGORIAS.length / 3) * 22 + 8;
-    const PAD_B = 32 + LEG_H;
-    const cW    = W - PAD_L - PAD_R;
-    const cH    = H - PAD_T - PAD_B;
-
-    const totals  = keys.map(k => CATEGORIAS.reduce((s, c) => s + (agrupado[k].cats[c] || 0), 0));
-    const maxVal  = niceMax(Math.max(...totals));
-    const N_TICKS = 5;
-    const font    = "11px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif";
-
-    for (let i = 0; i <= N_TICKS; i++) {
-      const val = (maxVal / N_TICKS) * i;
-      const y   = PAD_T + cH - (val / maxVal) * cH;
-      ctx.beginPath();
-      ctx.strokeStyle = i === 0 ? "#cbd5e0" : "#e2e8f0";
-      ctx.lineWidth   = 1;
-      ctx.moveTo(PAD_L, y);
-      ctx.lineTo(PAD_L + cW, y);
-      ctx.stroke();
-      const lbl = val >= 1e6 ? `$${(val/1e6).toFixed(1)}M`
-                : val >= 1e3 ? `$${(val/1e3).toFixed(0)}k`
-                : `$${val.toFixed(0)}`;
-      ctx.fillStyle = "#718096"; ctx.textAlign = "right"; ctx.textBaseline = "middle"; ctx.font = font;
-      ctx.fillText(lbl, PAD_L - 6, y);
-    }
-
-    const slotW  = cW / keys.length;
-    const barPad = Math.max(4, slotW * 0.2);
-    const barW   = slotW - barPad;
-
-    keys.forEach((k, i) => {
-      const x = PAD_L + i * slotW + barPad / 2;
-      let yBase = PAD_T + cH;
-      CATEGORIAS.forEach(cat => {
-        const val = agrupado[k].cats[cat] || 0;
-        if (!val) return;
-        const bH = (val / maxVal) * cH;
-        yBase -= bH;
-        ctx.fillStyle = COLORES_CAT[cat];
-        ctx.beginPath();
-        ctx.roundRect ? ctx.roundRect(x, yBase, barW, bH, [2, 2, 0, 0]) : ctx.rect(x, yBase, barW, bH);
-        ctx.fill();
-      });
-      ctx.fillStyle = "#718096"; ctx.textAlign = "center"; ctx.textBaseline = "top"; ctx.font = font;
-      ctx.fillText(agrupado[k].displayLabel, x + barW / 2, PAD_T + cH + 8);
+    chartInstance = new Chart(canvas, {
+      type: "bar",
+      data: { labels: keys.map(k => chartAgrupado[k].displayLabel), datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        scales: {
+          x: {
+            stacked: true,
+            ticks: { maxRotation: 90, minRotation: 60, color: "#718096", font: { size: 11 } },
+            grid:   { display: false },
+          },
+          y: {
+            stacked: true,
+            ticks: {
+              color: "#718096",
+              font:  { size: 11 },
+              callback: v => v >= 1e6 ? `$${(v/1e6).toFixed(1)}M` : v >= 1e3 ? `$${(v/1e3).toFixed(0)}k` : `$${v}`,
+            },
+            grid: { color: "#e2e8f0" },
+          },
+        },
+        plugins: {
+          legend: {
+            position: "bottom",
+            labels: { boxWidth: 12, boxHeight: 12, padding: 10, color: "#4a5568", font: { size: 11 } },
+          },
+          tooltip: {
+            filter: item => item.parsed.y > 0,
+            backgroundColor: "rgba(255,255,255,0.97)",
+            borderColor: "#e2e8f0",
+            borderWidth: 1,
+            titleColor: "#1a202c",
+            bodyColor:  "#4a5568",
+            footerColor: "#1a202c",
+            footerFont:  { weight: "bold" },
+            padding: 10,
+            callbacks: {
+              label:  ctx  => ` ${ctx.dataset.label}: ${fmtMonto(ctx.parsed.y)}`,
+              footer: items => `Total: ${fmtMonto(items.reduce((s, c) => s + c.parsed.y, 0))}`,
+            },
+          },
+          zoom: {
+            pan: {
+              enabled: true,
+              mode: "x",
+              onPanComplete: () => { document.getElementById("btnResetZoom").style.display = ""; },
+            },
+            zoom: {
+              wheel:  { enabled: true },
+              pinch:  { enabled: true },
+              mode:   "x",
+              onZoomComplete: () => { document.getElementById("btnResetZoom").style.display = ""; },
+            },
+          },
+        },
+        onClick: (_event, elements) => {
+          if (!elements.length) { closeDayDetail(); return; }
+          showDayDetail(chartAgrupado[keys[elements[0].index]]);
+        },
+      },
     });
+  }
 
-    const LEG_Y  = H - LEG_H + 4;
-    const ITEM_W = Math.floor(W / 3);
-    CATEGORIAS.forEach((cat, i) => {
-      const col = i % 3, row = Math.floor(i / 3);
-      const lx = col * ITEM_W + 4, ly = LEG_Y + row * 22;
-      ctx.fillStyle = COLORES_CAT[cat];
-      ctx.fillRect(lx, ly + 2, 12, 12);
-      ctx.fillStyle = "#4a5568"; ctx.textAlign = "left"; ctx.textBaseline = "middle"; ctx.font = font;
-      ctx.fillText(cat, lx + 16, ly + 8);
-    });
+  function showDayDetail(data) {
+    const titleEl = document.getElementById("dayDetailTitle");
+    const listEl  = document.getElementById("dayDetailList");
+    const cats    = CATEGORIAS.filter(c => data.cats[c] > 0).sort((a, b) => data.cats[b] - data.cats[a]);
+    const total   = cats.reduce((s, c) => s + data.cats[c], 0);
+    titleEl.textContent = `Detalle: ${data.displayLabel}`;
+    listEl.innerHTML = cats.map(c =>
+      `<div class="day-detail-item"><span class="day-detail-dot" style="background:${COLORES_CAT[c]}"></span>${c}: <strong>${fmtMonto(data.cats[c])}</strong></div>`
+    ).join("") + `<div class="day-detail-total">Total: ${fmtMonto(total)}</div>`;
+    document.getElementById("dayDetail").style.display = "";
+  }
+
+  function closeDayDetail() {
+    document.getElementById("dayDetail").style.display = "none";
   }
 
   document.getElementById("periodoSelect").addEventListener("change", function () {
     renderChart(rowsGlobal, this.value);
-  });
-
-  window.addEventListener("resize", () => {
-    if (currentIdx === 1 && rowsGlobal.length)
-      renderChart(rowsGlobal, document.getElementById("periodoSelect").value);
   });
 
   // ── Formateo ─────────────────────────────────────────────
@@ -1353,6 +1453,13 @@
       btn.disabled = false; btn.textContent = "Registrar gasto";
     }
   });
+
+  document.getElementById("btnResetZoom").addEventListener("click", () => {
+    if (chartInstance) chartInstance.resetZoom();
+    document.getElementById("btnResetZoom").style.display = "none";
+  });
+
+  document.getElementById("dayDetailClose").addEventListener("click", closeDayDetail);
 
   document.getElementById("totalMesSelect").addEventListener("change",     () => renderTotal(rowsGlobal));
   document.getElementById("balanceMesSelect").addEventListener("change",   () => renderBalance(rowsGlobal));
